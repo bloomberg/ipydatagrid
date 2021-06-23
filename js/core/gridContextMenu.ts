@@ -1,4 +1,4 @@
-import { DataGrid } from './datagrid';
+import { DataGrid } from '@lumino/datagrid';
 
 import { DataModel } from '@lumino/datagrid';
 

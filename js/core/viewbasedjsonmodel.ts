@@ -1,4 +1,4 @@
-import { DataModel, MutableDataModel } from '@lumino/datagrid';
+import { CellGroup, DataModel, MutableDataModel } from '@lumino/datagrid';
 
 import { each } from '@lumino/algorithm';
 
@@ -30,6 +30,8 @@ export class ViewBasedJSONModel extends MutableDataModel {
   constructor(data: ViewBasedJSONModel.IData) {
     super();
     this.updateDataset(data);
+    //@ts-ignore
+    window.jsonview = this;
     this._transformState = new TransformStateManager();
     // Repaint grid on transform state update
     // Note: This will also result in the `model-reset` signal being sent.
@@ -39,13 +41,12 @@ export class ViewBasedJSONModel extends MutableDataModel {
     });
     // first run: generate a list of indices corresponding
     // to the locations of multi-index arrays.
-    const multiIndexArrayLocations = ArrayUtils.generateMultiIndexArrayLocations(
-      this,
-    );
+    const multiIndexArrayLocations =
+      ArrayUtils.generateMultiIndexArrayLocations(this);
     // second run: map the index locations generated above to
     // the dataset so we have access to the multi index arrays
     // only.
-    let retVal = ArrayUtils.generateDataGridMergedCellLocations(
+    let mergedColumnLocations = ArrayUtils.generateColMergedCellLocations(
       this,
       multiIndexArrayLocations,
     );
@@ -53,10 +54,22 @@ export class ViewBasedJSONModel extends MutableDataModel {
     // want to render a merged range below a non-merged range. This function will check
     // that this requirement is met. If it is not, we simply render each cell individually
     // as if it wasn't grouped.
-    if (!ArrayUtils.validateMergingHierarchy(retVal)) {
-      retVal = [];
+    if (!ArrayUtils.validateMergingHierarchy(mergedColumnLocations)) {
+      mergedColumnLocations = [];
     }
-    this._mergedCellLocations = retVal;
+    this._mergedColumnCellLocations = mergedColumnLocations;
+
+    // Creating column merged cell groups from index locations
+    this._columnCellGroups = ArrayUtils.generateColumnCellGroups(
+      this._mergedColumnCellLocations,
+    );
+
+    // Creating merged row cell groups
+    let mergedRowLocations = ArrayUtils.generateRowMergedCellLocations(this);
+    if (!ArrayUtils.validateMergingHierarchy(mergedColumnLocations)) {
+      mergedRowLocations = [];
+    }
+    this._rowCellGroups = ArrayUtils.generateRowCellGroups(mergedRowLocations);
   }
 
   /**
@@ -106,11 +119,15 @@ export class ViewBasedJSONModel extends MutableDataModel {
    */
   getMergedSiblingCells(cell: number[]): any[] {
     const [row, column] = cell;
-    if (row < 0 || column < 0 || row >= this._mergedCellLocations.length) {
+    if (
+      row < 0 ||
+      column < 0 ||
+      row >= this._mergedColumnCellLocations.length
+    ) {
       return [];
     }
 
-    for (const cellGroup of this._mergedCellLocations[row]) {
+    for (const cellGroup of this._mergedColumnCellLocations[row]) {
       for (const rowCell of cellGroup) {
         const [rowIndex, columnIndex] = rowCell;
         if (row === rowIndex && column == columnIndex) {
@@ -141,6 +158,40 @@ export class ViewBasedJSONModel extends MutableDataModel {
    */
   columnCount(region: DataModel.ColumnRegion): number {
     return this.currentView.columnCount(region);
+  }
+
+  /**
+   * Get the group count for each region
+   * @param region
+   * @returns
+   */
+  groupCount(region: DataModel.RowRegion): number {
+    if (region === 'body') {
+      return 0;
+    } else if (region === 'column-header') {
+      return this._columnCellGroups.length;
+    } else if (region === 'row-header') {
+      return this._rowCellGroups.length;
+    }
+    return 0;
+  }
+
+  /**
+   * Specify merged cell groups for each region
+   * @param region
+   * @param groupIndex
+   * @returns
+   */
+  group(region: DataModel.CellRegion, groupIndex: number): CellGroup | null {
+    if (region === 'column-header') {
+      return this._columnCellGroups[groupIndex];
+    }
+
+    if (region === 'row-header') {
+      return this._rowCellGroups[groupIndex];
+    }
+
+    return null;
   }
 
   /**
@@ -568,7 +619,9 @@ export class ViewBasedJSONModel extends MutableDataModel {
 
   protected _dataset: ViewBasedJSONModel.IData;
   protected readonly _transformState: TransformStateManager;
-  private _mergedCellLocations: any[];
+  private _mergedColumnCellLocations: any[];
+  private _rowCellGroups: CellGroup[];
+  private _columnCellGroups: CellGroup[];
 }
 
 /**

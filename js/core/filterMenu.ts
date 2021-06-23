@@ -2,7 +2,7 @@ import { Transform } from './transform';
 
 import { ViewBasedJSONModel } from './viewbasedjsonmodel';
 
-import { DataGrid } from './datagrid';
+import { DataGrid } from '@lumino/datagrid';
 
 import { DataModel } from '@lumino/datagrid';
 

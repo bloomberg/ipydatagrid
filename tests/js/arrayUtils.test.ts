@@ -53,21 +53,20 @@ describe('Test multi index array utilities', () => {
   // Creating a model
   const testModel = new ViewBasedJSONModel(testData);
   // Generating an array with location of nested level headers
-  const mutltiIndexArrayLocations = ArrayUtils.generateMultiIndexArrayLocations(
-    testModel,
-  );
+  const mutltiIndexArrayLocations =
+    ArrayUtils.generateMultiIndexArrayLocations(testModel);
 
   test('Test .generateMultiIndexArrayLocations()', async () => {
     expect(mutltiIndexArrayLocations).toEqual([2, 3, 4, 5, 6, 7]);
   });
 
   // Generating an array with location of nested level headers
-  const nestedColumnDataGridIndices = ArrayUtils.generateDataGridMergedCellLocations(
+  const nestedColumnDataGridIndices = ArrayUtils.generateColMergedCellLocations(
     testModel,
     mutltiIndexArrayLocations,
   );
 
-  test('Test .mergedCellLocations()', async () => {
+  test('Test .generateColMergedCellLocations()', async () => {
     expect(nestedColumnDataGridIndices).toEqual([
       [
         [
@@ -87,9 +86,22 @@ describe('Test multi index array utilities', () => {
     ]);
   });
 
-  test('Test .validateMergingHierarchy()', async () => {
+  test('Test .validateMergingHierarchy() for nested columns', async () => {
     expect(
       ArrayUtils.validateMergingHierarchy(nestedColumnDataGridIndices),
     ).toBe(true);
+  });
+
+  test('Test .generateColumnCellGroups()', async () => {
+    const expected = [
+      { r1: 0, c1: 0, r2: 0, c2: 1 },
+      { r1: 0, c1: 2, r2: 0, c2: 3 },
+      { r1: 0, c1: 4, r2: 0, c2: 5 },
+    ];
+
+    const actual = ArrayUtils.generateColumnCellGroups(
+      nestedColumnDataGridIndices,
+    );
+    expect(actual).toEqual(expected);
   });
 });

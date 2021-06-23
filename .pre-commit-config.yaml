@@ -41,17 +41,17 @@ repos:
       - id: tox-ini-fmt
         args: ['-p', 'fix_lint']
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: 'v7.19.0'
+    rev: 'v7.29.0'
     hooks:
       - id: eslint
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
         args: ['--fix']
         additional_dependencies:
-          - eslint@7.19.0
-          - eslint-config-prettier@7.2.0 # prettier used with eslint directly
-          - eslint-plugin-prettier@3.3.1
+          - eslint@7.29.0
+          - eslint-config-prettier@8.3.0 # prettier used with eslint directly
+          - eslint-plugin-prettier@3.4.0
           - typescript@4.1.4
-          - prettier@2.2.1
+          - prettier@2.3.1
           - '@typescript-eslint/eslint-plugin'
           - '@typescript-eslint/parser'

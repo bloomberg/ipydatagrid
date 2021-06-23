@@ -11,7 +11,7 @@ import {
 import { CommandRegistry } from '@lumino/commands';
 import { toArray } from '@lumino/algorithm';
 import { Signal, ISignal } from '@lumino/signaling';
-import { DataGrid } from './core/datagrid';
+import { DataGrid } from '@lumino/datagrid';
 import { HeaderRenderer } from './core/headerRenderer';
 import { InteractiveFilterDialog } from './core/filterMenu';
 import { FeatherGridContextMenu } from './core/gridContextMenu';
@@ -245,11 +245,11 @@ export class FeatherGrid extends Widget {
   messageHook(handler: IMessageHandler, msg: Message): boolean {
     if (handler === this.grid.viewport) {
       // //@ts-ignore added so we don't have to add basicmousehandler.ts fork
-      const mouseHandler = (this.grid
-        .mouseHandler as unknown) as FeatherGridMouseHandler;
+      const mouseHandler = this.grid
+        .mouseHandler as unknown as FeatherGridMouseHandler;
 
       if (msg.type === 'column-resize-request' && mouseHandler.mouseIsDown) {
-        const resizeMsg = (msg as unknown) as FeatherGridColumnResizeMessage;
+        const resizeMsg = msg as unknown as FeatherGridColumnResizeMessage;
         const columnName: string = this.dataModel.columnIndexToName(
           resizeMsg.index,
           resizeMsg.region,
@@ -869,7 +869,8 @@ export class FeatherGrid extends Widget {
       iconClass:
         'ipydatagrid-filterMenuIcon ipydatagrid-filterMenuIcon-sortAsc',
       execute: (args): void => {
-        const cellClick: FeatherGridContextMenu.CommandArgs = args as FeatherGridContextMenu.CommandArgs;
+        const cellClick: FeatherGridContextMenu.CommandArgs =
+          args as FeatherGridContextMenu.CommandArgs;
         const colIndex = this._dataModel.getSchemaIndex(
           cellClick.region,
           cellClick.columnIndex,
@@ -887,7 +888,8 @@ export class FeatherGrid extends Widget {
       iconClass:
         'ipydatagrid-filterMenuIcon ipydatagrid-filterMenuIcon-sortDesc',
       execute: (args) => {
-        const cellClick: FeatherGridContextMenu.CommandArgs = args as FeatherGridContextMenu.CommandArgs;
+        const cellClick: FeatherGridContextMenu.CommandArgs =
+          args as FeatherGridContextMenu.CommandArgs;
         const colIndex = this._dataModel.getSchemaIndex(
           cellClick.region,
           cellClick.columnIndex,
@@ -917,8 +919,8 @@ export class FeatherGrid extends Widget {
         label: 'Clear Filters in All Columns',
         mnemonic: -1,
         execute: (args) => {
-          const activeTransforms: Transform.TransformSpec[] = this._dataModel
-            .activeTransforms;
+          const activeTransforms: Transform.TransformSpec[] =
+            this._dataModel.activeTransforms;
           const newTransforms = activeTransforms.filter(
             (val) => val.type !== 'filter',
           );

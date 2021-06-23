@@ -6,7 +6,7 @@ import { Theme } from '../utils';
 
 import { TransformStateManager } from './transformStateManager';
 
-import { DataGrid } from './datagrid';
+import { DataGrid } from '@lumino/datagrid';
 
 /**
  * A custom cell renderer for headers that provides a menu icon.
@@ -23,65 +23,6 @@ export class HeaderRenderer extends TextRenderer {
    */
   get model(): ViewBasedJSONModel {
     return this._grid.dataModel as ViewBasedJSONModel;
-  }
-
-  /**
-   * Draw the background for the cell.
-   *
-   * @param gc - The graphics context to use for drawing.
-   *
-   * @param config - The configuration data for the cell.
-   */
-  drawBackground(gc: GraphicsContext, config: CellRenderer.CellConfig): void {
-    const merges =
-      config.region === 'column-header'
-        ? this.model.getMergedSiblingCells([config.row, config.column])
-        : [];
-
-    // Resolve the background color for the cell.
-    const color = CellRenderer.resolveOption(this.backgroundColor, config);
-
-    // Bail if there is no background color to draw.
-    if (!color) {
-      return;
-    }
-
-    if (merges.length > 1) {
-      let xStart = Number.MAX_SAFE_INTEGER;
-      let yStart = Number.MAX_SAFE_INTEGER;
-      let xEnd = Number.MIN_SAFE_INTEGER;
-      let yEnd = Number.MIN_SAFE_INTEGER;
-
-      const grid = this._grid!;
-      for (const merge of merges) {
-        const [row, column] = merge;
-
-        const headerOffset =
-          config.region === 'corner-header'
-            ? 0
-            : this._grid!.headerWidth - this._grid.scrollX;
-        const x1 = grid.columnOffset('body', column) + headerOffset;
-        const y1 = grid.rowOffset('column-header', row);
-        const x2 = x1 + grid.columnSize('body', column);
-        const y2 = y1 + grid.rowSize('column-header', row);
-        xStart = Math.min(xStart, x1);
-        yStart = Math.min(yStart, y1);
-        xEnd = Math.max(xEnd, x2);
-        yEnd = Math.max(yEnd, y2);
-      }
-
-      const width = xEnd - xStart;
-      const height = yEnd - yStart;
-
-      // Fill the cell with the background color.
-      gc.fillStyle = color;
-
-      gc.fillRect(xStart, yStart, width, height);
-    } else {
-      // Fill the cell with the background color.
-      gc.fillStyle = color;
-      gc.fillRect(config.x, config.y, config.width, config.height);
-    }
   }
 
   /**
@@ -110,59 +51,28 @@ export class HeaderRenderer extends TextRenderer {
 
     // Format the cell value to text.
     const format = this.format;
-    const text = format(config);
+    let text = format(config);
 
     // Bail if there is no text to draw.
     if (!text) {
       return;
     }
 
-    const merges =
-      config.region === 'column-header'
-        ? this.model.getMergedSiblingCells([config.row, config.column])
-        : [];
-
-    let width = config.width;
-    let height = config.height;
-    let x = config.x;
-    let y = config.y;
-
-    if (merges.length > 1) {
-      let xStart = Number.MAX_SAFE_INTEGER;
-      let yStart = Number.MAX_SAFE_INTEGER;
-      let xEnd = Number.MIN_SAFE_INTEGER;
-      let yEnd = Number.MIN_SAFE_INTEGER;
-
-      for (const merge of merges) {
-        const [row, column] = merge;
-        const grid = this._grid!;
-
-        const offsetX =
-          config.region === 'corner-header'
-            ? 0
-            : this._grid!.headerWidth - this._grid.scrollX;
-        const x1 = grid.columnOffset('body', column) + offsetX;
-        const y1 = grid.rowOffset('column-header', row);
-        const x2 = x1 + grid.columnSize('body', column);
-        const y2 = y1 + grid.rowSize('column-header', row);
-        xStart = Math.min(xStart, x1);
-        yStart = Math.min(yStart, y1);
-        xEnd = Math.max(xEnd, x2);
-        yEnd = Math.max(yEnd, y2);
-
-        width = xEnd - xStart;
-        height = yEnd - yStart;
-        x = xStart;
-        y = yStart;
-      }
-    }
-
     // Resolve the vertical and horizontal alignment.
     const vAlign = CellRenderer.resolveOption(this.verticalAlignment, config);
     const hAlign = CellRenderer.resolveOption(this.horizontalAlignment, config);
 
+    // Resolve the elision direction
+    const elideDirection = CellRenderer.resolveOption(
+      this.elideDirection,
+      config,
+    );
+
+    // Resolve the text wrapping flag
+    const wrapText = CellRenderer.resolveOption(this.wrapText, config);
+
     // Compute the padded text box height for the specified alignment.
-    const boxHeight = height - (vAlign === 'center' ? 1 : 2);
+    const boxHeight = config.height - (vAlign === 'center' ? 1 : 2);
 
     // Bail if the text box has no effective size.
     if (boxHeight <= 0) {
@@ -175,17 +85,18 @@ export class HeaderRenderer extends TextRenderer {
     // Set up the text position variables.
     let textX: number;
     let textY: number;
+    let boxWidth: number;
 
     // Compute the Y position for the text.
     switch (vAlign) {
       case 'top':
-        textY = y + 2 + textHeight;
+        textY = config.y + 2 + textHeight;
         break;
       case 'center':
-        textY = y + height / 2 + textHeight / 2;
+        textY = config.y + config.height / 2 + textHeight / 2;
         break;
       case 'bottom':
-        textY = y + height - 2;
+        textY = config.y + config.height - 2;
         break;
       default:
         throw 'unreachable';
@@ -194,13 +105,16 @@ export class HeaderRenderer extends TextRenderer {
     // Compute the X position for the text.
     switch (hAlign) {
       case 'left':
-        textX = x + 2;
+        textX = config.x + 8;
+        boxWidth = config.width - 14;
         break;
       case 'center':
-        textX = x + width / 2;
+        textX = config.x + config.width / 2;
+        boxWidth = config.width;
         break;
       case 'right':
-        textX = x + width - 3;
+        textX = config.x + config.width - 8;
+        boxWidth = config.width - 14;
         break;
       default:
         throw 'unreachable';
@@ -209,7 +123,7 @@ export class HeaderRenderer extends TextRenderer {
     // Clip the cell if the text is taller than the text box height.
     if (textHeight > boxHeight) {
       gc.beginPath();
-      gc.rect(x, y, width, height - 1);
+      gc.rect(config.x, config.y, config.width, config.height - 1);
       gc.clip();
     }
 
@@ -219,7 +133,117 @@ export class HeaderRenderer extends TextRenderer {
     gc.textAlign = hAlign;
     gc.textBaseline = 'bottom';
 
-    // Draw the text
+    // The current text width in pixels.
+    let textWidth = gc.measureText(text).width;
+
+    // Apply text wrapping if enabled.
+    if (wrapText && textWidth > boxWidth) {
+      // Make sure box clipping happens.
+      gc.beginPath();
+      gc.rect(config.x, config.y, config.width, config.height - 1);
+      gc.clip();
+
+      // Split column name to words based on
+      // whitespace preceding a word boundary.
+      // "Hello  world" --> ["Hello  ", "world"]
+      const wordsInColumn = text.split(/\s(?=\b)/);
+
+      // Y-coordinate offset for any additional lines
+      let curY = textY;
+      let textInCurrentLine = wordsInColumn.shift()!;
+
+      // Single word. Applying text wrap on word by splitting
+      // it into characters and fitting the maximum number of
+      // characters possible per line (box width).
+      if (wordsInColumn.length === 0) {
+        let curLineTextWidth = gc.measureText(textInCurrentLine).width;
+        while (curLineTextWidth > boxWidth && textInCurrentLine !== '') {
+          // Iterating from the end of the string until we find a
+          // substring (0,i) which has a width less than the box width.
+          for (let i = textInCurrentLine.length; i > 0; i--) {
+            const curSubString = textInCurrentLine.substring(0, i);
+            const curSubStringWidth = gc.measureText(curSubString).width;
+            if (curSubStringWidth < boxWidth || curSubString.length === 1) {
+              // Found a substring which has a width less than the current
+              // box width. Rendering that substring on the current line
+              // and setting the remainder of the parent string as the next
+              // string to iterate on for the next line.
+              const nextLineText = textInCurrentLine.substring(
+                i,
+                textInCurrentLine.length,
+              );
+              textInCurrentLine = nextLineText;
+              curLineTextWidth = gc.measureText(textInCurrentLine).width;
+              gc.fillText(curSubString, textX, curY);
+              curY += textHeight;
+              // No need to continue iterating after we identified
+              // an index to break the string on.
+              break;
+            }
+          }
+        }
+      }
+
+      // Multiple words in column header. Fitting maximum
+      // number of words possible per line (box width).
+      else {
+        while (wordsInColumn.length !== 0) {
+          // Processing the next word in the queue.
+          const curWord = wordsInColumn.shift();
+          // Joining that word with the existing text for
+          // the current line.
+          const incrementedText = [textInCurrentLine, curWord].join(' ');
+          const incrementedTextWidth = gc.measureText(incrementedText).width;
+          if (incrementedTextWidth > boxWidth) {
+            // If the newly combined text has a width larger than
+            // the box width, we render the line before the current
+            // word was added. We set the current word as the next
+            // line.
+            gc.fillText(textInCurrentLine, textX, curY);
+            curY += textHeight;
+            textInCurrentLine = curWord!;
+          } else {
+            // The combined text hasd a width less than the box width. We
+            // set the the current line text to be the new combined text.
+            textInCurrentLine = incrementedText;
+          }
+        }
+      }
+      gc.fillText(textInCurrentLine!, textX, curY);
+      // Terminating the call here as we don't want
+      // to apply text eliding when wrapping is active.
+      return;
+    }
+
+    // Elide text that is too long
+    const elide = '\u2026';
+
+    // Compute elided text
+    if (elideDirection === 'right') {
+      while (textWidth > boxWidth && text.length > 1) {
+        if (text.length > 4 && textWidth >= 2 * boxWidth) {
+          // If text width is substantially bigger, take half the string
+          text = text.substring(0, text.length / 2 + 1) + elide;
+        } else {
+          // Otherwise incrementally remove the last character
+          text = text.substring(0, text.length - 2) + elide;
+        }
+        textWidth = gc.measureText(text).width;
+      }
+    } else {
+      while (textWidth > boxWidth && text.length > 1) {
+        if (text.length > 4 && textWidth >= 2 * boxWidth) {
+          // If text width is substantially bigger, take half the string
+          text = elide + text.substring(text.length / 2);
+        } else {
+          // Otherwise incrementally remove the last character
+          text = elide + text.substring(2);
+        }
+        textWidth = gc.measureText(text).width;
+      }
+    }
+
+    // Draw the text for the cell.
     gc.fillText(text, textX, textY);
 
     // Check if not bottom row of 'column-header' CellRegion
@@ -266,9 +290,8 @@ export class HeaderRenderer extends TextRenderer {
         config.column,
       );
 
-      const colMetaData:
-        | TransformStateManager.IColumn
-        | undefined = this.model.transformMetadata(schemaIndex);
+      const colMetaData: TransformStateManager.IColumn | undefined =
+        this.model.transformMetadata(schemaIndex);
 
       // Fill filter icon if filter applied
       if (colMetaData && colMetaData['filter']) {

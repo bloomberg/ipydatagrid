@@ -77,13 +77,8 @@ export class BarRenderer extends TextRenderer {
    */
   prepare(gc: GraphicsContext, config: CellRenderer.CellConfig): void {
     // Look up the default state from the renderer.
-    const {
-      font,
-      textColor,
-      barColor,
-      backgroundColor,
-      horizontalAlignment,
-    } = this;
+    const { font, textColor, barColor, backgroundColor, horizontalAlignment } =
+      this;
 
     // Set up the default font.
     if (font && typeof font === 'string') {
