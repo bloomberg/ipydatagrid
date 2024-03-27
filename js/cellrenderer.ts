@@ -1,23 +1,21 @@
 // Copyright (c) Bloomberg
 // Distributed under the terms of the Modified BSD License.
 
-import * as _ from 'underscore';
-
 const d3Format: any = require('d3-format');
 const d3TimeFormat: any = require('d3-time-format');
 
 import {
   CellRenderer,
-  TextRenderer,
   HyperlinkRenderer,
   ImageRenderer,
+  TextRenderer,
 } from '@lumino/datagrid';
 
 import {
   Dict,
+  ISerializers,
   WidgetModel,
   WidgetView,
-  ISerializers,
   resolvePromisesDict,
   unpack_models,
 } from '@jupyter-widgets/base';
