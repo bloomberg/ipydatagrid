@@ -1,23 +1,22 @@
 // Copyright (c) Bloomberg
 // Distributed under the terms of the Modified BSD License.
 
-import * as _ from 'underscore';
-
 const d3Format: any = require('d3-format');
 const d3TimeFormat: any = require('d3-time-format');
 
 import {
+  AsyncCellRenderer,
   CellRenderer,
-  TextRenderer,
   HyperlinkRenderer,
   ImageRenderer,
+  TextRenderer,
 } from '@lumino/datagrid';
 
 import {
   Dict,
+  ISerializers,
   WidgetModel,
   WidgetView,
-  ISerializers,
   resolvePromisesDict,
   unpack_models,
 } from '@jupyter-widgets/base';
@@ -28,6 +27,7 @@ import { BarRenderer } from './core/barrenderer';
 
 import { VegaExprView } from './vegaexpr';
 
+import { HtmlRenderer, exportedClass } from './core/htmlRenderer';
 import { Scalar, Theme } from './utils';
 
 // Temporary, will be removed when the scales are exported from bqplot
@@ -523,4 +523,92 @@ export class ImageRendererView extends CellRendererView {
   renderer: ImageRenderer;
 
   model: ImageRendererModel;
+}
+
+export class HtmlRendererModel extends CellRendererModel {
+  defaults() {
+    return {
+      ...super.defaults(),
+      _model_name: HtmlRendererModel.model_name,
+      _view_name: HtmlRendererModel.view_name,
+      font: '12px sans-serif',
+      placeholder: '...',
+      text_color: null,
+      background_color: null,
+      vertical_alignment: 'center',
+      horizontal_alignment: 'left',
+    };
+  }
+
+  get_attrs(): ICellRendererAttribute[] {
+    return [
+      { name: 'font', phosphorName: 'font', defaultValue: '12px sans-serif' },
+      { name: 'placeholder', phosphorName: 'placeholder', defaultValue: '...' },
+      {
+        name: 'text_color',
+        phosphorName: 'textColor',
+        defaultValue: Theme.getFontColor(),
+      },
+      {
+        name: 'background_color',
+        phosphorName: 'backgroundColor',
+        defaultValue: Theme.getBackgroundColor(),
+      },
+      {
+        name: 'vertical_alignment',
+        phosphorName: 'verticalAlignment',
+        defaultValue: 'center',
+      },
+      {
+        name: 'horizontal_alignment',
+        phosphorName: 'horizontalAlignment',
+        defaultValue: 'left',
+      },
+    ];
+  }
+
+  static serializers: ISerializers = {
+    ...CellRendererModel.serializers,
+    font: { deserialize: unpack_models as any },
+    placeholder: { deserialize: unpack_models as any },
+    text_color: { deserialize: unpack_models as any },
+    background_color: { deserialize: unpack_models as any },
+    vertical_alignment: { deserialize: unpack_models as any },
+    horizontal_alignment: { deserialize: unpack_models as any },
+  };
+
+  static model_name = 'HtmlRendererModel';
+  static view_name = 'HtmlRendererView';
+}
+
+export class HtmlRendererView extends CellRendererView {
+  createRenderer(options: HtmlRenderer.IOptions) {
+    // Workaround for Jupyter Lab 3 / ipywidget 7 compatibility
+    let htmRenderer: any;
+
+    if (!AsyncCellRenderer) {
+      htmRenderer = new TextRenderer({
+        format: (config) => {
+          return 'AsyncCellRenderer not available. Check that you are using JupyterLab>=4.1.';
+        },
+        wrapText: true,
+      });
+    } else {
+      htmRenderer = new exportedClass({
+        ...options,
+      });
+      htmRenderer.imageLoaded.connect(() => {
+        setTimeout(() => {
+          this.trigger('renderer-needs-update');
+        }, 0);
+      });
+    }
+
+    return htmRenderer;
+  }
+
+  // Workaround for Jupyter Lab 3 / ipywidget 7 compatibility
+  renderer: any;
+
+  model: HtmlRendererModel;
 }

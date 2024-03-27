@@ -193,3 +193,44 @@ class ImageRenderer(CellRenderer):
         allow_none=True,
         default_value="100%",
     ).tag(sync=True, **widget_serialization)
+
+
+class HtmlRenderer(CellRenderer):
+    _model_name = Unicode("HtmlRendererModel").tag(sync=True)
+    _view_name = Unicode("HtmlRendererView").tag(sync=True)
+
+    font = Union(
+        (Unicode(), Instance(VegaExpr), Instance(Scale)),
+        default_value="12px sans-serif",
+    ).tag(sync=True, **widget_serialization)
+    text_color = Union(
+        (Color(), Instance(VegaExpr), Instance(ColorScale)),
+    ).tag(sync=True, **widget_serialization)
+    background_color = Union(
+        (Color(), Instance(VegaExpr), Instance(ColorScale)),
+    ).tag(sync=True, **widget_serialization)
+    placeholder = Unicode().tag(sync=True)
+    vertical_alignment = Union(
+        (
+            Enum(values=["top", "center", "bottom"]),
+            Instance(VegaExpr),
+            Instance(Scale),
+        ),
+        default_value="center",
+    ).tag(sync=True, **widget_serialization)
+    horizontal_alignment = Union(
+        (
+            Enum(values=["left", "center", "right"]),
+            Instance(VegaExpr),
+            Instance(Scale),
+        ),
+        default_value="left",
+    ).tag(sync=True, **widget_serialization)
+
+    @default("text_color")
+    def _default_text_color(self):
+        return Expr("default_value")
+
+    @default("background_color")
+    def _default_background_color(self):
+        return Expr("default_value")

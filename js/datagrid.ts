@@ -795,6 +795,8 @@ export {
   HyperlinkRendererView,
   TextRendererModel,
   TextRendererView,
+  HtmlRendererModel,
+  HtmlRendererView,
 } from './cellrenderer';
 export { VegaExprModel, VegaExprView } from './vegaexpr';
 
