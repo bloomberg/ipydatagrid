@@ -23,6 +23,7 @@ import {
   JupyterLuminoPanelWidget,
   // @ts-ignore needed for ipywidgetx 7.x compatibility
   JupyterPhosphorPanelWidget,
+  pack_models,
   resolvePromisesDict,
   unpack_models,
   WidgetModel,
@@ -325,7 +326,10 @@ export class DataGridModel extends DOMWidgetModel {
   static serializers: ISerializers = {
     ...DOMWidgetModel.serializers,
     transforms: { deserialize: unpack_models as any },
-    renderers: { deserialize: unpack_models as any },
+    renderers: {
+      deserialize: unpack_models as any,
+      serialize: pack_models as any,
+    },
     corner_renderer: { deserialize: unpack_models as any },
     default_renderer: { deserialize: unpack_models as any },
     header_renderer: { deserialize: unpack_models as any },
@@ -789,12 +793,12 @@ export class DataGridView extends DOMWidgetView {
 export {
   BarRendererModel,
   BarRendererView,
-  ImageRendererModel,
-  ImageRendererView,
   HyperlinkRendererModel,
   HyperlinkRendererView,
+  ImageRendererModel,
+  ImageRendererView,
   TextRendererModel,
-  TextRendererView,
+  TextRendererView
 } from './cellrenderer';
 export { VegaExprModel, VegaExprView } from './vegaexpr';
 

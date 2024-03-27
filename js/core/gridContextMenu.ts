@@ -113,6 +113,21 @@ export class FeatherGridContextMenu extends GridContextMenu {
           type: 'separator',
         });
         this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.AlignLeft,
+          args: args,
+        });
+        this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.AlignCenter,
+          args: args,
+        });
+        this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.AlignRight,
+          args: args,
+        });
+        this._menu.addItem({
+          type: 'separator',
+        });
+        this._menu.addItem({
           command: FeatherGridContextMenu.CommandID.OpenFilterByConditionDialog,
           args: args,
         });
@@ -246,6 +261,9 @@ export namespace FeatherGridContextMenu {
     SaveSelectionAsCsv = 'saveSelectionAsCsv',
     SaveAllAsCsv = 'saveAllAsCsv',
     ClearSelection = 'clearSelection',
+    AlignLeft = 'align:Left',
+    AlignCenter = 'align:Center',
+    AlignRight = 'align:Right',
   }
 
   /**
