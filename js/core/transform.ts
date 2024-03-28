@@ -2,7 +2,10 @@
  * A declarative spec for specifying transformations.
  */
 export namespace Transform {
-  export type TransformSpec = Transform.Sort | Transform.Filter;
+  export type TransformSpec =
+    | Transform.Sort
+    | Transform.Filter
+    | Transform.Hide;
 
   /**
    * A declarative spec for the `Sort` transformation.
@@ -22,6 +25,26 @@ export namespace Transform {
      * Indicates if the sort should be performed descending or ascending.
      */
     desc: boolean;
+  };
+
+  /**
+   * A declarative spec for the `Hide` transformation.
+   */
+  export type Hide = {
+    /**
+     * A type alias for this trasformation.
+     */
+    type: 'hide';
+
+    /**
+     * The column in the data schema to apply the transformation to.
+     */
+    columnIndex: number;
+
+    /**
+     * Boolean indicating if all columns should be hidden
+     */
+    hideAll: boolean;
   };
 
   /**

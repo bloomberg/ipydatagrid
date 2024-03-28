@@ -1034,6 +1034,57 @@ export class FeatherGrid extends Widget {
         this.grid.selectionModel?.clear();
       },
     });
+    commands.addCommand(FeatherGridContextMenu.CommandID.HideColumn, {
+      label: 'Hide Column',
+      mnemonic: -1,
+      execute: (args) => {
+        const cellClick: FeatherGridContextMenu.CommandArgs =
+          args as FeatherGridContextMenu.CommandArgs;
+        const colIndex = this._dataModel.getSchemaIndex(
+          cellClick.region,
+          cellClick.columnIndex,
+        );
+        this._dataModel.addTransform({
+          type: 'hide',
+          columnIndex: colIndex,
+          hideAll: false,
+        });
+      },
+    });
+    commands.addCommand(FeatherGridContextMenu.CommandID.HideAllColumns, {
+      label: 'Hide All Columns',
+      mnemonic: -1,
+      execute: (args) => {
+        const cellClick: FeatherGridContextMenu.CommandArgs =
+          args as FeatherGridContextMenu.CommandArgs;
+        const colIndex = this._dataModel.getSchemaIndex(
+          cellClick.region,
+          cellClick.columnIndex,
+        );
+        this._dataModel.addTransform({
+          type: 'hide',
+          columnIndex: colIndex,
+          hideAll: true,
+        });
+      },
+    });
+    commands.addCommand(FeatherGridContextMenu.CommandID.ShowAllColumns, {
+      label: 'Show All Columns',
+      mnemonic: -1,
+      execute: () => {
+        const activeTransforms: Transform.TransformSpec[] =
+          this._dataModel.activeTransforms;
+        console.log(
+          'this._dataModel.activeTransforms',
+          this._dataModel.activeTransforms,
+        );
+        const newTransforms = activeTransforms.filter(
+          (val) => val.type !== 'hide',
+        );
+        console.log('newTransforms', newTransforms);
+        this._dataModel.replaceTransforms(newTransforms);
+      },
+    });
 
     return commands;
   }

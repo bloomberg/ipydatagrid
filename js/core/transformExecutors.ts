@@ -1,7 +1,7 @@
 import { Dict } from '@jupyter-widgets/base';
 
-import { Transform } from './transform';
 import { DataSource } from '../datasource';
+import { Transform } from './transform';
 
 import * as moment from 'moment';
 
@@ -23,6 +23,52 @@ export namespace TransformExecutor {
    * A read only type for the input/output of .apply().
    */
   export type IData = Readonly<DataSource>;
+}
+
+export class HideExecutor extends TransformExecutor {
+  constructor(options: HideExecutor.IOptions) {
+    super();
+    this._options = options;
+  }
+
+  // input has data and schema
+  public apply(input: TransformExecutor.IData): TransformExecutor.IData {
+    const newSchema = { ...input.schema };
+
+    if (this._options.hideAll) {
+      newSchema.fields = newSchema.fields.filter(
+        (field) => field.name === 'key',
+      );
+    } else {
+      newSchema.fields = newSchema.fields.filter(
+        (field) => field.name !== this._options.field,
+      );
+    }
+
+    return new DataSource(input.data, input.fields, newSchema);
+  }
+
+  protected _options: HideExecutor.IOptions;
+}
+
+/**
+ * The namespace for the `HideExecutor` class statics.
+ */
+export namespace HideExecutor {
+  /**
+   * An options object for initializing a Hide.
+   */
+  export interface IOptions {
+    /**
+     * The name of the field to hide in the data source.
+     */
+    field: string;
+
+    /**
+     * Boolean indicating if all columns should be hidden
+     */
+    hideAll: boolean;
+  }
 }
 
 /**
