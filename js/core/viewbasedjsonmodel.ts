@@ -10,8 +10,8 @@ import { View } from './view';
 
 import { TransformStateManager } from './transformStateManager';
 
-import { ArrayUtils } from '../utils';
 import { DataSource } from '../datasource';
+import { ArrayUtils } from '../utils';
 
 /**
  * A view based data model implementation for in-memory JSON data.
@@ -76,6 +76,7 @@ export class ViewBasedJSONModel extends MutableDataModel {
    */
   updateDataset(data: DataSource): void {
     this._dataset = data;
+    // does not happen when selecting hide column
     this._updatePrimaryKeyMap();
     const view = new View(this._dataset);
     this.currentView = view;
@@ -569,6 +570,7 @@ export class ViewBasedJSONModel extends MutableDataModel {
     }
     // We need to rerun the transforms, as the changed cells may change the order
     // or visibility of other rows
+    console.log('update row value');
     this.currentView = this._transformState.createView(this._dataset);
   }
 
