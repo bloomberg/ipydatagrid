@@ -20,11 +20,11 @@ export class ViewBasedJSONModel extends MutableDataModel {
   /**
    * Create a data model with static JSON data.
    *
-   * @param data - The dataset for initializing the data model.
+   * @param options - The options for creating the data model.
    */
-  constructor(data: DataSource) {
+  constructor(options: ViewBasedJSONModel.IOptions) {
     super();
-    this.updateDataset(data);
+    this.updateDataset(options);
 
     this._transformState = new TransformStateManager();
     // Repaint grid on transform state update
@@ -72,10 +72,10 @@ export class ViewBasedJSONModel extends MutableDataModel {
   /**
    * Sets the dataset for this model.
    *
-   * @param data - The data to be set on this data model
+   * @param options - The options for creating the model
    */
-  updateDataset(data: DataSource): void {
-    this._dataset = data;
+  updateDataset(options: ViewBasedJSONModel.IOptions): void {
+    this._dataset = options.datasource;
     this._updatePrimaryKeyMap();
     const view = new View(this._dataset);
     this.currentView = view;
@@ -85,7 +85,7 @@ export class ViewBasedJSONModel extends MutableDataModel {
    * Updates the primary key map, which provides a mapping from primary key
    * value to row in the full dataset.
    */
-  private _updatePrimaryKeyMap(): void {
+  protected _updatePrimaryKeyMap(): void {
     this._primaryKeyMap.clear();
 
     const primaryKey = this._dataset.schema.primaryKey as string[];
@@ -594,7 +594,7 @@ export class ViewBasedJSONModel extends MutableDataModel {
     return this.currentView.getSchemaIndex(region, index);
   }
 
-  private _currentView: View;
+  protected _currentView: View;
   private _transformSignal = new Signal<this, TransformStateManager.IEvent>(
     this,
   );
@@ -615,6 +615,13 @@ export class ViewBasedJSONModel extends MutableDataModel {
  * The namespace for the `ViewBasedJSONModel` class statics.
  */
 export namespace ViewBasedJSONModel {
+  export interface IOptions {
+    /**
+     * The `DataSource` for the model.
+     */
+    datasource: DataSource;
+  }
+
   export interface IUpdateCellValuesOptions {
     /**
      * The `CellRegion` of the cell to be updated.

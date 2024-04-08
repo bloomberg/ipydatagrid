@@ -124,6 +124,10 @@ export class FeatherGrid extends Widget {
 
     this._createGrid(options);
 
+    if (this.backboneModel) {
+      this.grid.copyConfig = this.backboneModel.get('copy_config');
+    }
+
     this._defaultRenderer = new TextRenderer({
       font: '12px sans-serif',
       textColor: Theme.getFontColor(),

@@ -31,11 +31,13 @@ import {
 import { array_or_json_serializer } from 'bqplot';
 
 import { ViewBasedJSONModel } from './core/viewbasedjsonmodel';
+import { StreamingViewBasedJSONModel } from './core/streamingviewbasedjsonmodel';
 
 import { MODULE_NAME, MODULE_VERSION } from './version';
 
 import { CellRendererModel, CellRendererView } from './cellrenderer';
 import { FeatherGrid } from './feathergrid';
+import { StreamingFeatherGrid } from './streamingfeathergrid';
 import { Theme } from './utils';
 import { DataSource } from './datasource';
 
@@ -239,12 +241,12 @@ export class DataGridModel extends DOMWidgetModel {
     const data = this.data;
 
     if (this.data_model) {
-      this.data_model.updateDataset(data);
+      this.data_model.updateDataset({ datasource: data });
       this.data_model.transformStateChanged.disconnect(this.syncTransformState);
       this.data_model.dataSync.disconnect(this.updateDataSync);
     }
 
-    this.data_model = new ViewBasedJSONModel(this.data);
+    this.data_model = new ViewBasedJSONModel({ datasource: data });
 
     this.data_model.transformStateChanged.connect(this.syncTransformState);
     this.data_model.dataSync.connect(this.updateDataSync);
@@ -382,13 +384,13 @@ export class DataGridModel extends DOMWidgetModel {
     grid_style: { deserialize: unpack_style as any },
   };
 
-  static model_name = 'DataGridModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
+  static readonly model_name: string = 'DataGridModel';
+  static readonly model_module = MODULE_NAME;
+  static readonly model_module_version = MODULE_VERSION;
 
-  static view_name = 'DataGridView';
-  static view_module = MODULE_NAME;
-  static view_module_version = MODULE_VERSION;
+  static readonly view_name: string = 'DataGridView';
+  static readonly view_module = MODULE_NAME;
+  static readonly view_module_version = MODULE_VERSION;
 
   data_model: ViewBasedJSONModel;
   selectionModel: BasicSelectionModel | null;
@@ -494,29 +496,8 @@ export class DataGridView extends DOMWidgetView {
     this._processLuminoMessage(msg, super.processPhosphorMessage);
   }
 
-  render(): Promise<void> {
-    this.el.classList.add('datagrid-container');
-    window.addEventListener('resize', this.manageResizeEvent);
-    this.once('remove', () => {
-      window.removeEventListener('resize', this.manageResizeEvent);
-    });
-
-    const grid_style = this.model.get('grid_style');
-    if (
-      this.model.get('horizontal_stripes') ||
-      this.model.get('vertical_stripes')
-    ) {
-      const index = this.model.get('horizontal_stripes')
-        ? 'rowBackgroundColor'
-        : 'columnBackgroundColor';
-      grid_style[index] = (index: number): string => {
-        return index % 2 === 0
-          ? Theme.getBackgroundColor(1)
-          : Theme.getBackgroundColor(2);
-      };
-    }
-
-    this.grid = new FeatherGrid({
+  protected _createGrid(): FeatherGrid {
+    return new FeatherGrid({
       defaultSizes: {
         rowHeight: this.model.get('base_row_size'),
         columnWidth: this.model.get('base_column_size'),
@@ -524,8 +505,18 @@ export class DataGridView extends DOMWidgetView {
         columnHeaderHeight: this.model.get('base_column_header_size'),
       },
       headerVisibility: this.model.get('header_visibility'),
-      style: grid_style,
+      style: this.model.get('grid_style'),
     });
+  }
+
+  render(): Promise<void> {
+    this.el.classList.add('datagrid-container');
+    window.addEventListener('resize', this.manageResizeEvent);
+    this.once('remove', () => {
+      window.removeEventListener('resize', this.manageResizeEvent);
+    });
+
+    this.grid = this._createGrid();
 
     this.grid.columnWidths = this.model.get('column_widths');
     this.grid.editable = this.model.get('editable');
@@ -890,4 +881,95 @@ namespace Private {
     // @ts-ignore needed for ipywidget 7.x compatibility
     return JupyterLuminoPanelWidget ?? JupyterPhosphorPanelWidget;
   }
+}
+
+export class StreamingDataGridModel extends DataGridModel {
+  defaults() {
+    return {
+      ...super.defaults(),
+      _model_name: StreamingDataGridModel.model_name,
+      _view_name: StreamingDataGridModel.view_name,
+      _row_count: 0,
+      _data: {},
+    };
+  }
+
+  initialize(attributes: any, options: any) {
+    super.initialize(attributes, options);
+
+    this.on('msg:custom', (content, buffers) => {
+      if (content.event_type === 'data-reply') {
+        // Bring back buffers at their original position in the data structure
+        for (const column of Object.keys(content.value.data)) {
+          content.value.data[column].value =
+            buffers[content.value.data[column].value];
+        }
+
+        const deserialized = deserialize_data(content.value, null);
+        this.data_model.setModelRangeData(
+          content.r1,
+          content.r2,
+          content.c1,
+          content.c2,
+          deserialized,
+        );
+      }
+    });
+  }
+
+  updateData() {
+    const data = this.data;
+
+    if (this.data_model) {
+      this.data_model.updateDataset({
+        datasource: data,
+        rowCount: this.get('_row_count'),
+      });
+      this.data_model.transformStateChanged.disconnect(this.syncTransformState);
+      this.data_model.dataSync.disconnect(this.updateDataSync);
+    }
+
+    this.data_model = new StreamingViewBasedJSONModel({
+      datasource: this.data,
+      rowCount: this.get('_row_count'),
+    });
+
+    this.data_model.transformStateChanged.connect(this.syncTransformState);
+    this.data_model.dataSync.connect(this.updateDataSync);
+
+    this.updateTransforms();
+    this.trigger('data-model-changed');
+    this.updateSelectionModel();
+  }
+
+  requestData(r1: number, r2: number, c1: number, c2: number) {
+    this.send({ type: 'data-request', r1, r2, c1, c2 });
+  }
+
+  static readonly model_name: string = 'StreamingDataGridModel';
+  static readonly view_name: string = 'StreamingDataGridView';
+
+  data_model: StreamingViewBasedJSONModel;
+}
+
+export class StreamingDataGridView extends DataGridView {
+  protected _createGrid(): StreamingFeatherGrid {
+    return new StreamingFeatherGrid({
+      defaultSizes: {
+        rowHeight: this.model.get('base_row_size'),
+        columnWidth: this.model.get('base_column_size'),
+        rowHeaderWidth: this.model.get('base_row_header_size'),
+        columnHeaderHeight: this.model.get('base_column_header_size'),
+      },
+      headerVisibility: this.model.get('header_visibility'),
+      style: this.model.get('grid_style'),
+      requestData: this.requestData.bind(this),
+    });
+  }
+
+  private requestData(r1: number, r2: number, c1: number, c2: number) {
+    this.model.requestData(r1, r2, c1, c2);
+  }
+
+  model: StreamingDataGridModel;
 }

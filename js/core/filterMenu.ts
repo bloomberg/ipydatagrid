@@ -264,7 +264,9 @@ export class InteractiveFilterDialog extends BoxPanel {
         primaryKeyUuid: 'index',
       },
     );
-    this._uniqueValueGrid.dataModel = new ViewBasedJSONModel(data);
+    this._uniqueValueGrid.dataModel = new ViewBasedJSONModel({
+      datasource: data,
+    });
     const sortTransform: Transform.Sort = {
       type: 'sort',
       column: 'uniqueVals',
