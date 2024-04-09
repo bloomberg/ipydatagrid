@@ -23,7 +23,6 @@ from traitlets import (
     default,
     validate,
 )
-from bqplot.traits import array_to_json
 
 from ._frontend import module_name, module_version
 from .cellrenderer import BarRenderer, CellRenderer, TextRenderer
@@ -999,7 +998,7 @@ class StreamingDataGrid(DataGrid):
     _debounce_delay = Int(160).tag(sync=True)
 
     def __init__(self, *args, debounce_delay=160, **kwargs):
-        super(StreamingDataGrid, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._debounce_delay = debounce_delay
 
@@ -1014,7 +1013,7 @@ class StreamingDataGrid(DataGrid):
 
     @property
     def data(self):
-        return super(StreamingDataGrid, self).data
+        return super().data
 
     @data.setter
     def data(self, dataframe):
@@ -1040,7 +1039,7 @@ class StreamingDataGrid(DataGrid):
 
     def tick(self):
         """Notify that the underlying dataframe has changed."""
-        self.send({ "event_type": "tick" })
+        self.send({"event_type": "tick"})
 
     def _handle_comm_msg(self, _, content, buffers):
         event_type = content.get("type", "")

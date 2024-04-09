@@ -12,7 +12,7 @@ from .cellrenderer import (
     TextRenderer,
     VegaExpr,
 )
-from .datagrid import StreamingDataGrid, DataGrid, SelectionHelper
+from .datagrid import DataGrid, SelectionHelper, StreamingDataGrid
 
 
 def _jupyter_nbextension_paths():
