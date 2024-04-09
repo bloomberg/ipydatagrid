@@ -996,9 +996,13 @@ class StreamingDataGrid(DataGrid):
     _view_name = Unicode("StreamingDataGridView").tag(sync=True)
 
     _row_count = Int(0).tag(sync=True)
+    _debounce_delay = Int(160).tag(sync=True)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, debounce_delay=160, **kwargs):
         super(StreamingDataGrid, self).__init__(*args, **kwargs)
+
+        self._debounce_delay = debounce_delay
+
         self.on_msg(self._handle_comm_msg)
 
     def transform(self, transform):

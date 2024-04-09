@@ -9,7 +9,10 @@ export class StreamingFeatherGrid extends FeatherGrid {
 
     this._requestData = options.requestData;
 
-    this._pullData = new Debouncer(this.pullDataImpl.bind(this), 160);
+    this._pullData = new Debouncer(
+      this.pullDataImpl.bind(this),
+      options.debounceDelay,
+    );
   }
 
   messageHook(handler: IMessageHandler, msg: Message): boolean {
@@ -38,6 +41,8 @@ export class StreamingFeatherGrid extends FeatherGrid {
       return;
     }
 
+    // TODO Contribute upstream to provide public APIs to get the current viewport
+    // This will help us remove those ts-ignores and get rid of low-level code
     // @ts-ignore
     const contentW = this.grid._columnSections.length - this.grid.scrollX;
     // @ts-ignore
@@ -71,12 +76,25 @@ export class StreamingFeatherGrid extends FeatherGrid {
     this._requestData(r1, r2, c1, c2);
   }
 
-  private _requestData: any;
+  private _requestData: (
+    r1: number,
+    r2: number,
+    c1: number,
+    c2: number,
+  ) => void;
   private _pullData: Debouncer;
 }
 
 export namespace StreamingFeatherGrid {
   export interface IOptions extends DataGrid.IOptions {
-    requestData: any;
+    /**
+     * The function for requesting data to the back-end.
+     */
+    requestData: (r1: number, r2: number, c1: number, c2: number) => void;
+
+    /**
+     * Delay for debouncing data requests.
+     */
+    debounceDelay: number;
   }
 }

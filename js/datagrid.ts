@@ -891,6 +891,7 @@ export class StreamingDataGridModel extends DataGridModel {
       _view_name: StreamingDataGridModel.view_name,
       _row_count: 0,
       _data: {},
+      _debounce_delay: 160,
     };
   }
 
@@ -963,6 +964,7 @@ export class StreamingDataGridView extends DataGridView {
       },
       headerVisibility: this.model.get('header_visibility'),
       style: this.model.get('grid_style'),
+      debounceDelay: this.model.get('_debounce_delay'),
       requestData: this.requestData.bind(this),
     });
   }
