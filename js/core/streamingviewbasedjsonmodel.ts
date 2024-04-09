@@ -28,6 +28,15 @@ export class StreamingViewBasedJSONModel extends ViewBasedJSONModel {
       rowSpan: r2 - r1 + 1,
       columnSpan: c2 - c1 + 1,
     });
+
+    this.emitChanged({
+      type: 'cells-changed',
+      region: 'row-header',
+      row: r1,
+      column: 0,
+      rowSpan: r2 - r1 + 1,
+      columnSpan: this._currentView.columnCount('row-header'),
+    });
   }
 
   updateDataset(options: StreamingViewBasedJSONModel.IOptions): void {

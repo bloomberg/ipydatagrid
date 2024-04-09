@@ -9,6 +9,7 @@
 import { DataModel } from '@lumino/datagrid';
 import { View } from './view';
 import { DataSource } from '../datasource';
+import { Dict } from '@jupyter-widgets/base';
 
 /**
  * A View implementation for immutable in-memory JSON data.
@@ -26,7 +27,6 @@ export class StreamingView extends View {
     super(options.datasource);
 
     this._rowCount = options.rowCount;
-    this._streamed_data = [];
   }
 
   /**
@@ -60,15 +60,25 @@ export class StreamingView extends View {
    */
   data(region: DataModel.CellRegion, row: number, column: number): any {
     if (region == 'body') {
-      if (this._streamed_data[row] === undefined) {
-        this._streamed_data[row] = [];
+      const field = this._bodyFields[column];
+
+      if (this._streamed_data[field.name] !== undefined) {
+        const value = this._streamed_data[field.name][row];
+        return value !== undefined ? value : '...';
       }
-      const value = this._streamed_data[row][column];
-      return value !== undefined ? value : '';
+
+      return '...';
     }
 
     if (region == 'row-header') {
-      return 'TODO';
+      const field = this._headerFields[column];
+
+      if (this._streamed_data[field.name] !== undefined) {
+        const value = this._streamed_data[field.name][row];
+        return value !== undefined ? value : '...';
+      }
+
+      return '...';
     }
 
     return super.data(region, row, column);
@@ -82,46 +92,64 @@ export class StreamingView extends View {
     value: DataSource,
   ) {
     let field: DataSource.IField;
-    let r = 0;
 
-    for (let row = r1; row <= r2; row++) {
-      if (this._streamed_data[row] === undefined) {
-        this._streamed_data[row] = [];
-      }
-      for (let column = c1; column <= c2; column++) {
-        field = this._bodyFields[column];
+    // Update body
+    for (let column = c1; column <= c2; column++) {
+      field = this._bodyFields[column];
 
-        this._streamed_data[row][column] = value.data[field.name][r];
+      if (this._streamed_data[field.name] === undefined) {
+        this._streamed_data[field.name] = [];
       }
-      r++;
+
+      let r = 0;
+
+      for (let row = r1; row <= r2; row++) {
+        this._streamed_data[field.name][row] = value.data[field.name][r];
+        r++;
+      }
+    }
+
+    // Update header fields
+    for (let column = 0; column < this._headerFields.length; column++) {
+      field = this._headerFields[column];
+
+      if (this._streamed_data[field.name] === undefined) {
+        this._streamed_data[field.name] = [];
+      }
+
+      let r = 0;
+      for (let row = r1; row <= r2; row++) {
+        this._streamed_data[field.name][row] = value.data[field.name][r];
+        r++;
+      }
     }
   }
 
   setData(value: any, row: number, column: number) {
-    if (this._streamed_data[row] === undefined) {
-      this._streamed_data[row] = [];
+    const field = this._bodyFields[column];
+
+    if (this._streamed_data[field.name] === undefined) {
+      this._streamed_data[field.name] = [];
     }
 
-    if (this._streamed_data[row][column] === undefined) {
-      this._streamed_data[row][column] = [];
-    }
-
-    this._streamed_data[row][column] = value;
+    this._streamed_data[field.name][row] = value;
   }
 
   hasData(row: number, column: number): boolean {
-    if (this._streamed_data[row] === undefined) {
+    const field = this._bodyFields[column];
+
+    if (this._streamed_data[field.name] === undefined) {
       return false;
     }
 
-    if (this._streamed_data[row][column] === undefined) {
+    if (this._streamed_data[field.name][row] === undefined) {
       return false;
     }
 
     return true;
   }
 
-  private _streamed_data: any[][];
+  private _streamed_data: Dict<any[]> = {};
   private readonly _rowCount: number;
 }
 
