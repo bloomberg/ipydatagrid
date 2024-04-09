@@ -40,6 +40,7 @@ __all__ = [
     "TextRenderer",
     "HtmlRenderer",
     "VegaExpr",
+    "StreamingDataGrid",
     "DataGrid",
     "SelectionHelper",
 ]

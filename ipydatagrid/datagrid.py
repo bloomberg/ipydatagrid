@@ -1,7 +1,6 @@
 # Copyright (c) NumFOCUS.
 # Distributed under the terms of the Modified BSD License.
 
-import asyncio
 import datetime
 import decimal
 import warnings
@@ -989,7 +988,8 @@ class DataGrid(DOMWidget):
 
 class StreamingDataGrid(DataGrid):
     """A blazingly fast Grid Widget.
-    This widget needs a live kernel for working (does not work when embedded in static HTML)
+    This widget needs a live kernel for working
+    (does not work when embedded in static HTML)
     """
 
     _model_name = Unicode("StreamingDataGridModel").tag(sync=True)
@@ -1005,10 +1005,11 @@ class StreamingDataGrid(DataGrid):
 
         self.on_msg(self._handle_comm_msg)
 
-    def transform(self, transform):
+    def transform(self, _):
         # TODO Implement sorting and filtering backend-side?
         raise RuntimeError(
-            "Setting filters and sorting rules to a StreamingDataGrid is not supported."
+            "Setting filters and sorting rules to a "
+            "StreamingDataGrid is not supported."
         )
 
     @property
@@ -1031,11 +1032,11 @@ class StreamingDataGrid(DataGrid):
 
         self._row_count = len(self._data_object["data"])
 
-        self._data = dict(
-            data={},
-            schema=self._data_object["schema"],
-            fields=self._data_object["fields"],
-        )
+        self._data = {
+            "data": {},
+            "schema": self._data_object["schema"],
+            "fields": self._data_object["fields"],
+        }
 
     def _handle_comm_msg(self, _, content, buffers):
         event_type = content.get("type", "")
@@ -1061,13 +1062,13 @@ class StreamingDataGrid(DataGrid):
                 buffers.append(serialized["data"][column]["value"])
                 serialized["data"][column]["value"] = len(buffers) - 1
 
-            answer = dict(
-                event_type="data-reply",
-                value=serialized,
-                r1=r1,
-                r2=r2,
-                c1=c1,
-                c2=c2,
-            )
+            answer = {
+                "event_type": "data-reply",
+                "value": serialized,
+                "r1": r1,
+                "r2": r2,
+                "c1": c1,
+                "c2": c2,
+            }
 
             self.send(answer, buffers)
