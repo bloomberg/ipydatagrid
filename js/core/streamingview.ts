@@ -135,20 +135,6 @@ export class StreamingView extends View {
     this._streamed_data[field.name][row] = value;
   }
 
-  hasData(row: number, column: number): boolean {
-    const field = this._bodyFields[column];
-
-    if (this._streamed_data[field.name] === undefined) {
-      return false;
-    }
-
-    if (this._streamed_data[field.name][row] === undefined) {
-      return false;
-    }
-
-    return true;
-  }
-
   private _streamed_data: Dict<any[]> = {};
   private readonly _rowCount: number;
 }

@@ -1,4 +1,3 @@
-import { DataModel } from '@lumino/datagrid';
 import { StreamingView } from './streamingview';
 import { ViewBasedJSONModel } from './viewbasedjsonmodel';
 import { DataSource } from '../datasource';
@@ -47,13 +46,6 @@ export class StreamingViewBasedJSONModel extends ViewBasedJSONModel {
       rowCount: options.rowCount,
     });
     this.currentView = view;
-  }
-
-  data(region: DataModel.CellRegion, row: number, column: number): any {
-    if (region === 'body' && !this.currentView.hasData(row, column)) {
-      return '...';
-    }
-    return this.currentView.data(region, row, column);
   }
 
   updateCellValue(options: ViewBasedJSONModel.IUpdateCellValuesOptions): void {
