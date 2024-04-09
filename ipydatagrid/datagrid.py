@@ -1037,10 +1037,6 @@ class StreamingDataGrid(DataGrid):
             fields=self._data_object["fields"],
         )
 
-        from ipywidgets import Output
-
-        self._out = Output()
-
     def _handle_comm_msg(self, _, content, buffers):
         event_type = content.get("type", "")
 
@@ -1073,7 +1069,5 @@ class StreamingDataGrid(DataGrid):
                 c1=c1,
                 c2=c2,
             )
-            with self._out:
-                self.send(answer, buffers)
 
-            return
+            self.send(answer, buffers)
