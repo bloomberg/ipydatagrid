@@ -1038,6 +1038,10 @@ class StreamingDataGrid(DataGrid):
             "fields": self._data_object["fields"],
         }
 
+    def tick(self):
+        """Notify that the underlying dataframe has changed."""
+        self.send({ "event_type": "tick" })
+
     def _handle_comm_msg(self, _, content, buffers):
         event_type = content.get("type", "")
 

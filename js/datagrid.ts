@@ -26,6 +26,7 @@ import {
   resolvePromisesDict,
   unpack_models,
   WidgetModel,
+  WidgetView,
 } from '@jupyter-widgets/base';
 
 import { array_or_json_serializer } from 'bqplot';
@@ -954,6 +955,18 @@ export class StreamingDataGridModel extends DataGridModel {
 }
 
 export class StreamingDataGridView extends DataGridView {
+  initialize(parameters: WidgetView.IInitializeParameters<WidgetModel>): void {
+    super.initialize(parameters);
+
+    this.model.on('msg:custom', (content, _) => {
+      if (content.event_type === 'tick') {
+        this.grid.tick();
+
+        return;
+      }
+    });
+  }
+
   protected _createGrid(): StreamingFeatherGrid {
     return new StreamingFeatherGrid({
       defaultSizes: {
@@ -974,4 +987,5 @@ export class StreamingDataGridView extends DataGridView {
   }
 
   model: StreamingDataGridModel;
+  grid: StreamingFeatherGrid;
 }

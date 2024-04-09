@@ -23,11 +23,15 @@ export class StreamingFeatherGrid extends FeatherGrid {
         msg.type === 'row-resize-request' ||
         msg.type === 'column-resize-request'
       ) {
-        this._pullData.invoke();
+        this.tick();
       }
     }
 
     return true;
+  }
+
+  tick() {
+    this._pullData.invoke();
   }
 
   private pullDataImpl() {
