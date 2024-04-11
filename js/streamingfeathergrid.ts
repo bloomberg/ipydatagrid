@@ -45,8 +45,9 @@ export class StreamingFeatherGrid extends FeatherGrid {
       return;
     }
 
-    // TODO Contribute upstream to provide public APIs to get the current viewport
-    // This will help us remove those ts-ignores and get rid of low-level code
+    // TODO Remove all this low-level code once https://github.com/jupyterlab/lumino/pull/695 is merged and available
+    // CAUTION WHEN REMOVING, we need an escape path for older Lumino as we don't control its version. Full removal
+    // can only happen when a backward incompatible release is made.
     // @ts-ignore
     const contentW = this.grid._columnSections.length - this.grid.scrollX;
     // @ts-ignore
