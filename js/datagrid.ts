@@ -903,10 +903,13 @@ export class StreamingDataGridModel extends DataGridModel {
       if (content.event_type === 'data-reply') {
         // Bring back buffers at their original position in the data structure
         for (const column of Object.keys(content.value.data)) {
-          content.value.data[column].value =
-            buffers[content.value.data[column].value];
+          if (content.value.data[column].type !== 'raw') {
+            content.value.data[column].value =
+              buffers[content.value.data[column].value];
+          }
         }
 
+        console.log('set data')
         const deserialized = deserialize_data(content.value, null);
         this.data_model.setModelRangeData(
           content.r1,

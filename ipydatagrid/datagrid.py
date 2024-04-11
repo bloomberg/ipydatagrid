@@ -1062,12 +1062,9 @@ class StreamingDataGrid(DataGrid):
             # Extract all buffers
             buffers = []
             for column in serialized["data"].keys():
-                if not isinstance(serialized["data"][column], list):
-                    if serialized["data"][column]["type"] == "raw":
-                        serialized["data"][column] = serialized["data"][column]["value"]
-                    else:
-                        buffers.append(serialized["data"][column]["value"])
-                        serialized["data"][column]["value"] = len(buffers) - 1
+                if not isinstance(serialized["data"][column], list) and not serialized["data"][column]["type"] == "raw":
+                    buffers.append(serialized["data"][column]["value"])
+                    serialized["data"][column]["value"] = len(buffers) - 1
 
             answer = {
                 "event_type": "data-reply",
