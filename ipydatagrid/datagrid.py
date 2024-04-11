@@ -1041,7 +1041,7 @@ class StreamingDataGrid(DataGrid):
         """Notify that the underlying dataframe has changed."""
         self.send({"event_type": "tick"})
 
-    def _handle_comm_msg(self, _, content, buffers):
+    def _handle_comm_msg(self, _, content, buffs):
         event_type = content.get("type", "")
 
         if event_type == "data-request":
@@ -1062,8 +1062,9 @@ class StreamingDataGrid(DataGrid):
             # Extract all buffers
             buffers = []
             for column in serialized["data"].keys():
-                buffers.append(serialized["data"][column]["value"])
-                serialized["data"][column]["value"] = len(buffers) - 1
+                if not isinstance(serialized["data"][column], list):
+                    buffers.append(serialized["data"][column]["value"])
+                    serialized["data"][column]["value"] = len(buffers) - 1
 
             answer = {
                 "event_type": "data-reply",
