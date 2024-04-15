@@ -2259,7 +2259,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lumino/polling@npm:^2.1.2":
+"@lumino/polling@npm:^1 || ^2, @lumino/polling@npm:^2.1.2":
   version: 2.1.2
   resolution: "@lumino/polling@npm:2.1.2"
   dependencies:
@@ -6316,6 +6316,7 @@ __metadata:
     "@lumino/default-theme": ^1 || ^2
     "@lumino/domutils": ^1 || ^2
     "@lumino/messaging": ^1 || ^2
+    "@lumino/polling": ^1 || ^2
     "@lumino/signaling": ^1 || ^2
     "@lumino/virtualdom": ^1 || ^2
     "@lumino/widgets": ^1 || ^2
