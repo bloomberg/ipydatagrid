@@ -55,11 +55,11 @@ export class StreamingViewBasedJSONModel extends ViewBasedJSONModel {
     this._currentView.setData(options.value, options.row, options.column);
   }
 
-  protected get currentView(): StreamingView {
+  get currentView(): StreamingView {
     return this._currentView;
   }
 
-  protected set currentView(view: StreamingView) {
+  set currentView(view: StreamingView) {
     super.currentView = view;
   }
 
