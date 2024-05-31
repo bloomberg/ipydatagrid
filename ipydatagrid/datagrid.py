@@ -934,6 +934,7 @@ class DataGrid(DOMWidget):
     @staticmethod
     def _get_cell_value_by_numerical_index(data, column_index, row_index):
         """Gets the value for a single cell by column index and row index."""
+        # TODO This is really not efficient, we should speed it up
         column = DataGrid._column_index_to_name(data, column_index)
         if column is None:
             return None
@@ -982,3 +983,99 @@ class DataGrid(DOMWidget):
                     if scale.max is None:
                         max = column_data.max()
                         scale.max = max if is_date else float(max)
+
+
+class StreamingDataGrid(DataGrid):
+    """A blazingly fast Grid Widget.
+    This widget needs a live kernel for working
+    (does not work when embedded in static HTML)
+    """
+
+    _model_name = Unicode("StreamingDataGridModel").tag(sync=True)
+    _view_name = Unicode("StreamingDataGridView").tag(sync=True)
+
+    _row_count = Int(0).tag(sync=True)
+    _debounce_delay = Int(160).tag(sync=True)
+
+    def __init__(self, *args, debounce_delay=160, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._debounce_delay = debounce_delay
+
+        self.on_msg(self._handle_comm_msg)
+
+    def transform(self, _):
+        # TODO Implement sorting and filtering backend-side?
+        raise RuntimeError(
+            "Setting filters and sorting rules to a "
+            "StreamingDataGrid is not supported."
+        )
+
+    @property
+    def data(self):
+        return super().data
+
+    @data.setter
+    def data(self, dataframe):
+        self.__dataframe_reference_index_names = dataframe.index.names
+        self.__dataframe_reference_columns = dataframe.columns
+        # Not making a copy in the streaming grid
+        self.__dataframe_reference = dataframe
+
+        # Primary key used
+        index_key = self.get_dataframe_index(dataframe)
+
+        self._data_object = self.generate_data_object(
+            dataframe, "ipydguuid", index_key
+        )
+
+        self._row_count = len(self._data_object["data"])
+
+        self._data = {
+            "data": {},
+            "schema": self._data_object["schema"],
+            "fields": self._data_object["fields"],
+        }
+
+    def tick(self):
+        """Notify that the underlying dataframe has changed."""
+        self.send({"event_type": "tick"})
+
+    def _handle_comm_msg(self, _, content, _buffs):
+        event_type = content.get("type", "")
+
+        if event_type == "data-request":
+            r1 = content.get("r1")
+            r2 = content.get("r2")
+            c1 = content.get("c1")
+            c2 = content.get("c2")
+
+            value = self.__dataframe_reference.iloc[r1 : r2 + 1, c1 : c2 + 1]
+
+            # Primary key used
+            index_key = self.get_dataframe_index(value)
+
+            serialized = _data_serialization_impl(
+                self.generate_data_object(value, "ipydguuid", index_key), None
+            )
+
+            # Extract all buffers
+            buffers = []
+            for column in serialized["data"].keys():
+                if (
+                    not isinstance(serialized["data"][column], list)
+                    and not serialized["data"][column]["type"] == "raw"
+                ):
+                    buffers.append(serialized["data"][column]["value"])
+                    serialized["data"][column]["value"] = len(buffers) - 1
+
+            answer = {
+                "event_type": "data-reply",
+                "value": serialized,
+                "r1": r1,
+                "r2": r2,
+                "c1": c1,
+                "c2": c2,
+            }
+
+            self.send(answer, buffers)

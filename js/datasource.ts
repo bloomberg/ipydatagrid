@@ -41,7 +41,7 @@ export class DataSource {
       return 0;
     }
 
-    return this._data[this._columns[0]].length;
+    return this.data[this._columns[0]].length;
   }
 
   private _createSchema(
