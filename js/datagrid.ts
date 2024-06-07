@@ -23,6 +23,7 @@ import {
   JupyterLuminoPanelWidget,
   // @ts-ignore needed for ipywidgetx 7.x compatibility
   JupyterPhosphorPanelWidget,
+  pack_models,
   resolvePromisesDict,
   unpack_models,
   WidgetModel,
@@ -35,9 +36,9 @@ import { ViewBasedJSONModel } from './core/viewbasedjsonmodel';
 import { MODULE_NAME, MODULE_VERSION } from './version';
 
 import { CellRendererModel, CellRendererView } from './cellrenderer';
+import { DataSource } from './datasource';
 import { FeatherGrid } from './feathergrid';
 import { Theme } from './utils';
-import { DataSource } from './datasource';
 
 // Import CSS
 import '../style/jupyter-widget.css';
@@ -371,7 +372,10 @@ export class DataGridModel extends DOMWidgetModel {
   static serializers: ISerializers = {
     ...DOMWidgetModel.serializers,
     transforms: { deserialize: unpack_models as any },
-    renderers: { deserialize: unpack_models as any },
+    renderers: {
+      deserialize: unpack_models as any,
+      serialize: debug as any,
+    },
     corner_renderer: { deserialize: unpack_models as any },
     default_renderer: { deserialize: unpack_models as any },
     header_renderer: { deserialize: unpack_models as any },
@@ -394,6 +398,40 @@ export class DataGridModel extends DOMWidgetModel {
   selectionModel: BasicSelectionModel | null;
   synchingWithKernel = false;
   _view_callbacks: ICallbacks;
+}
+
+function debug(value: any) {
+  const upm = debug_pack_models(value);
+  console.log('first', value);
+  console.log('upm', upm);
+  return upm;
+}
+const IPY_MODEL_ = 'IPY_MODEL_';
+
+function debug_pack_models(
+  value: WidgetModel | Dict<WidgetModel> | WidgetModel[] | any,
+  widget?: WidgetModel,
+): any | Dict<unknown> | string | (Dict<unknown> | string)[] {
+  if (Array.isArray(value)) {
+    console.log('array');
+    const model_ids: string[] = [];
+    for (const model of value) {
+      model_ids.push(pack_models(model, widget));
+    }
+    return model_ids;
+  } else if (value instanceof WidgetModel) {
+    console.log('widget model');
+    return `${IPY_MODEL_}${value.model_id}`;
+  } else if (value instanceof Object && typeof value !== 'string') {
+    console.log('object');
+    const packed: { [key: string]: string } = {};
+    for (const [key, sub_value] of Object.entries(value)) {
+      packed[key] = pack_models(sub_value, widget);
+    }
+    return packed;
+  } else {
+    return value;
+  }
 }
 
 /**
@@ -853,14 +891,14 @@ export class DataGridView extends DOMWidgetView {
 export {
   BarRendererModel,
   BarRendererView,
-  ImageRendererModel,
-  ImageRendererView,
-  HyperlinkRendererModel,
-  HyperlinkRendererView,
-  TextRendererModel,
-  TextRendererView,
   HtmlRendererModel,
   HtmlRendererView,
+  HyperlinkRendererModel,
+  HyperlinkRendererView,
+  ImageRendererModel,
+  ImageRendererView,
+  TextRendererModel,
+  TextRendererView,
 } from './cellrenderer';
 export { VegaExprModel, VegaExprView } from './vegaexpr';
 
