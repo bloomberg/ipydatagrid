@@ -1,7 +1,7 @@
-import { TransformStateManager } from '../../js/core/transformStateManager';
 import { Transform } from '../../js/core/transform';
-import { DataGenerator } from './testUtils';
+import { TransformStateManager } from '../../js/core/transformStateManager';
 import { View } from '../../js/core/view';
+import { DataGenerator } from './testUtils';
 
 describe('Test .add()', () => {
   const testCases: Transform.TransformSpec[] = [
@@ -229,10 +229,14 @@ namespace Private {
     return { type: 'filter', column: 'test', operator: '<', value: 0 };
   }
 
+  export function simpleHide(): Transform.Hide {
+    return { type: 'hide', column: 'test', hideAll: false };
+  }
+
   /**
    * Returns a simple column of transform state.
    */
   export function simpleState(): TransformStateManager.IColumn {
-    return { filter: simpleFilter(), sort: simpleSort() };
+    return { filter: simpleFilter(), sort: simpleSort(), hide: simpleHide() };
   }
 }

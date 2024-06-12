@@ -3,8 +3,9 @@ import { Transform } from './transform';
 import { View } from './view';
 
 import {
-  SortExecutor,
   FilterExecutor,
+  HideExecutor,
+  SortExecutor,
   TransformExecutor,
 } from './transformExecutors';
 
@@ -12,7 +13,7 @@ import { each } from '@lumino/algorithm';
 
 import { JSONExt } from '@lumino/coreutils';
 
-import { Signal, ISignal } from '@lumino/signaling';
+import { ISignal, Signal } from '@lumino/signaling';
 import { DataSource } from '../datasource';
 
 /**
@@ -25,6 +26,7 @@ export class TransformStateManager {
       this._state[transform.column] = {
         sort: undefined,
         filter: undefined,
+        hide: undefined,
       };
     }
 
@@ -40,6 +42,9 @@ export class TransformStateManager {
         break;
       case 'filter':
         this._state[transform.column]['filter'] = transform;
+        break;
+      case 'hide':
+        this._state[transform.column]['hide'] = transform;
         break;
       default:
         throw 'unreachable';
@@ -110,6 +115,7 @@ export class TransformStateManager {
   private _createExecutors(data: Readonly<DataSource>): TransformExecutor[] {
     const sortExecutors: SortExecutor[] = [];
     const filterExecutors: FilterExecutor[] = [];
+    const hideExecutors: HideExecutor[] = [];
 
     Object.keys(this._state).forEach((column) => {
       const transform: TransformStateManager.IColumn = this._state[column];
@@ -146,10 +152,25 @@ export class TransformStateManager {
         });
         filterExecutors.push(executor);
       }
+      if (transform.hide) {
+        let dType = '';
+        for (const field of data.schema.fields) {
+          if (field.name === transform.hide.column) {
+            dType = field.type;
+          }
+        }
+
+        const executor = new HideExecutor({
+          field: transform.hide.column,
+          dType,
+          hideAll: transform.hide.hideAll,
+        });
+        hideExecutors.push(executor);
+      }
     });
 
     // Always put filters first
-    return [...filterExecutors, ...sortExecutors];
+    return [...filterExecutors, ...sortExecutors, ...hideExecutors];
   }
 
   /**
@@ -171,10 +192,12 @@ export class TransformStateManager {
         columnState.sort = undefined;
       } else if (transformType === 'filter') {
         columnState.filter = undefined;
+      } else if (transformType === 'hide') {
+        columnState.hide = undefined;
       } else {
         throw 'unreachable';
       }
-      if (!columnState.sort && !columnState.filter) {
+      if (!columnState.sort && !columnState.filter && !columnState.hide) {
         delete this._state[column];
       }
       this._changed.emit({
@@ -229,6 +252,9 @@ export class TransformStateManager {
       if (this._state[column].filter) {
         transforms.push(this._state[column].filter!);
       }
+      if (this._state[column].hide) {
+        transforms.push(this._state[column].hide!);
+      }
     });
     return transforms;
   }
@@ -255,6 +281,7 @@ export namespace TransformStateManager {
   export interface IColumn {
     filter: Transform.Filter | undefined;
     sort: Transform.Sort | undefined;
+    hide: Transform.Hide | undefined;
   }
   export interface IState {
     [key: string]: IColumn;

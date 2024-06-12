@@ -10,8 +10,8 @@ import { View } from './view';
 
 import { TransformStateManager } from './transformStateManager';
 
-import { ArrayUtils } from '../utils';
 import { DataSource } from '../datasource';
+import { ArrayUtils } from '../utils';
 
 /**
  * A view based data model implementation for in-memory JSON data.
