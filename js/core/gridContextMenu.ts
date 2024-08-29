@@ -98,6 +98,13 @@ export class FeatherGridContextMenu extends GridContextMenu {
     switch (hit.region) {
       case 'column-header':
         this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.HideColumn,
+          args: args,
+        });
+        this._menu.addItem({
+          type: 'separator',
+        });
+        this._menu.addItem({
           command: FeatherGridContextMenu.CommandID.SortAscending,
           args: args,
         });
@@ -141,6 +148,17 @@ export class FeatherGridContextMenu extends GridContextMenu {
         });
         break;
       case 'corner-header':
+        this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.ShowAllColumns,
+          args: args,
+        });
+        this._menu.addItem({
+          command: FeatherGridContextMenu.CommandID.HideAllColumns,
+          args: args,
+        });
+        this._menu.addItem({
+          type: 'separator',
+        });
         this._menu.addItem({
           command: FeatherGridContextMenu.CommandID.SortAscending,
           args: args,
@@ -258,6 +276,9 @@ export namespace FeatherGridContextMenu {
     SaveSelectionAsCsv = 'saveSelectionAsCsv',
     SaveAllAsCsv = 'saveAllAsCsv',
     ClearSelection = 'clearSelection',
+    HideColumn = 'hideColumn',
+    HideAllColumns = 'hideAllColumns',
+    ShowAllColumns = 'showAllColumns',
   }
 
   /**

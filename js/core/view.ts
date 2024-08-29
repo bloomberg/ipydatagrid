@@ -42,6 +42,7 @@ export class View {
     if (region === 'body') {
       return this._data.length;
     } else {
+      // If there are no body rows, return one for the header row
       return this._bodyFields[0]?.rows.length ?? 1;
     }
   }
