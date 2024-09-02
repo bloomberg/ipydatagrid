@@ -18,8 +18,15 @@ import { ViewBasedJSONModel } from './core/viewbasedjsonmodel';
 import { KeyHandler } from './keyhandler';
 import { MouseHandler as FeatherGridMouseHandler } from './mousehandler';
 import { Theme } from './utils';
+import { MODULE_NAME, MODULE_VERSION } from './version';
 
 import { DataGridModel as BackBoneModel } from './datagrid';
+
+import {
+  DOMWidgetModel,
+  ISerializers,
+  unpack_models,
+} from '@jupyter-widgets/base';
 
 import '@lumino/default-theme/style/datagrid.css';
 import '../style/feathergrid.css';
@@ -107,6 +114,11 @@ const themeVariables: Map<string, string[]> = new Map([
 ]);
 
 export class FeatherGrid extends Widget {
+  static serializers: ISerializers = {
+    ...DOMWidgetModel.serializers,
+    renderers: { deserialize: unpack_models as any },
+  };
+
   constructor(options: DataGrid.IOptions = {}) {
     super();
     this.addClass('ipydatagrid-widget');
@@ -871,6 +883,55 @@ export class FeatherGrid extends Widget {
     });
   }
 
+  private async _createTextRendererWidget() {
+    const model = await this.backboneModel.widget_manager.new_widget({
+      model_name: 'TextRendererModel',
+      model_module: MODULE_NAME,
+      model_module_version: MODULE_VERSION,
+      view_name: 'TextRendererView',
+      view_module: MODULE_NAME,
+      view_module_version: MODULE_VERSION,
+    });
+    return model;
+  }
+
+  private async _updateTextAlignment(
+    columnName: string,
+    alignment: 'left' | 'center' | 'right',
+  ) {
+    const currentRenderers = this.backboneModel.get('renderers');
+    const defaultRenderer = this.backboneModel.get('default_renderer');
+    const currentRendererForColumn = currentRenderers[columnName];
+
+    // If there is a renderer for which we can set the alignment, set it
+    if (
+      currentRendererForColumn !== undefined &&
+      'horizontal_alignment' in currentRendererForColumn.attributes
+    ) {
+      currentRendererForColumn.set('horizontal_alignment', alignment);
+      currentRendererForColumn.save_changes();
+      return;
+    }
+
+    // Assuming it's using the default renderer, we create a new renderer and copy its attributes
+    // TODO create a renderer of the same type as the default renderer
+    const model = await this._createTextRendererWidget();
+    for (const attr in model.attributes) {
+      if (attr in defaultRenderer.attributes) {
+        model.set(attr, defaultRenderer.get(attr));
+      }
+    }
+    model.set('horizontal_alignment', alignment);
+    model.save_changes();
+
+    const updatedRenderers = { ...currentRenderers };
+    updatedRenderers[columnName] = model;
+
+    // TODO Find why this is not propagated to Python correctly
+    this.backboneModel.set('renderers', updatedRenderers);
+    this.backboneModel.save_changes();
+  }
+
   private _createCommandRegistry(): CommandRegistry {
     const commands = new CommandRegistry();
     commands.addCommand(FeatherGridContextMenu.CommandID.SortAscending, {
@@ -1068,6 +1129,48 @@ export class FeatherGrid extends Widget {
       mnemonic: -1,
       execute: () => {
         this.grid.selectionModel?.clear();
+      },
+    });
+    commands.addCommand(FeatherGridContextMenu.CommandID.AlignLeft, {
+      label: 'Align Left',
+      mnemonic: -1,
+      execute: async (args) => {
+        const commandArgs = <FeatherGridContextMenu.CommandArgs>args;
+        const columnName: string = this.dataModel.metadata(
+          commandArgs.region,
+          commandArgs.rowIndex,
+          commandArgs.columnIndex,
+        )['name'];
+
+        await this._updateTextAlignment(columnName, 'left');
+      },
+    });
+    commands.addCommand(FeatherGridContextMenu.CommandID.AlignCenter, {
+      label: 'Align Center',
+      mnemonic: -1,
+      execute: async (args) => {
+        const commandArgs = <FeatherGridContextMenu.CommandArgs>args;
+        const columnName: string = this.dataModel.metadata(
+          commandArgs.region,
+          commandArgs.rowIndex,
+          commandArgs.columnIndex,
+        )['name'];
+
+        await this._updateTextAlignment(columnName, 'center');
+      },
+    });
+    commands.addCommand(FeatherGridContextMenu.CommandID.AlignRight, {
+      label: 'Align Right',
+      mnemonic: -1,
+      execute: async (args) => {
+        const commandArgs = <FeatherGridContextMenu.CommandArgs>args;
+        const columnName: string = this.dataModel.metadata(
+          commandArgs.region,
+          commandArgs.rowIndex,
+          commandArgs.columnIndex,
+        )['name'];
+
+        await this._updateTextAlignment(columnName, 'right');
       },
     });
 
