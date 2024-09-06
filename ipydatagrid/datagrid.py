@@ -1001,6 +1001,7 @@ class StreamingDataGrid(DataGrid):
         super().__init__(*args, **kwargs)
 
         self._debounce_delay = debounce_delay
+        self._transformed_data = None
 
         self.on_msg(self._handle_comm_msg)
 
@@ -1041,6 +1042,66 @@ class StreamingDataGrid(DataGrid):
         """Notify that the underlying dataframe has changed."""
         self.send({"event_type": "tick"})
 
+    def _apply_frontend_transforms(self, frontend_transforms, dataframe):
+        for transform in frontend_transforms:
+            if transform["type"] == "sort":
+                column = transform["column"]
+                desc = transform.get("desc", False)
+                dataframe = dataframe.sort_values(
+                    by=[column], ascending=not desc
+                )
+            elif transform["type"] == "filter":
+                column = transform["column"]
+                operator = transform["operator"]
+                value = transform["value"]
+                if operator == "<":
+                    dataframe = dataframe[dataframe[column] < value]
+                elif operator == ">":
+                    dataframe = dataframe[dataframe[column] > value]
+                elif operator == "=":
+                    dataframe = dataframe[dataframe[column] == value]
+                elif operator == "<=":
+                    dataframe = dataframe[dataframe[column] <= value]
+                elif operator == ">=":
+                    dataframe = dataframe[dataframe[column] >= value]
+                elif operator == "!=":
+                    dataframe = dataframe[dataframe[column] != value]
+                elif operator == "empty":
+                    dataframe = dataframe[dataframe[column].isna()]
+                elif operator == "notempty":
+                    dataframe = dataframe[dataframe[column].notna()]
+                elif operator == "in":
+                    dataframe = dataframe[dataframe[column].isin(value)]
+                elif operator == "between":
+                    dataframe = dataframe[
+                        dataframe[column].between(value[0], value[1])
+                    ]
+                elif operator == "startswith":
+                    dataframe = dataframe[
+                        dataframe[column].str.startswith(value)
+                    ]
+                elif operator == "endswith":
+                    dataframe = dataframe[dataframe[column].str.endswith(value)]
+                elif operator == "stringContains":
+                    dataframe = dataframe[dataframe[column].str.contains(value)]
+                elif operator == "contains":
+                    dataframe = dataframe[dataframe[column].str.contains(value)]
+                elif operator == "!contains":
+                    dataframe = dataframe[
+                        not dataframe[column].str.contains(value)
+                    ]
+                elif operator == "isOnSameDay":
+                    value = pd.to_datetime(value).date()
+                    dataframe = dataframe[
+                        pd.to_datetime(dataframe[column]).dt.date == value
+                    ]
+                else:
+                    raise RuntimeError(
+                        f"Unrecognised filter operator '{operator}'"
+                    )
+
+        return dataframe
+
     def _handle_comm_msg(self, _, content, _buffs):
         event_type = content.get("type", "")
 
@@ -1050,7 +1111,14 @@ class StreamingDataGrid(DataGrid):
             c1 = content.get("c1")
             c2 = content.get("c2")
 
-            value = self.__dataframe_reference.iloc[r1 : r2 + 1, c1 : c2 + 1]
+            # Filter/sort whole dataset before selecting rows/cols of interest
+            if self._transformed_data is not None:
+                # Use existing transformed data.
+                value = self._transformed_data
+            else:
+                value = self.__dataframe_reference
+
+            value = value.iloc[r1 : r2 + 1, c1 : c2 + 1]
 
             # Primary key used
             index_key = self.get_dataframe_index(value)
@@ -1079,3 +1147,32 @@ class StreamingDataGrid(DataGrid):
             }
 
             self.send(answer, buffers)
+
+        elif event_type == "frontend-transforms":
+            # Transforms is an array of dicts.
+            frontend_transforms = content.get("transforms")
+
+            self._transformed_data = None
+            data = self.__dataframe_reference
+
+            if frontend_transforms:
+                self._transformed_data = self._apply_frontend_transforms(
+                    frontend_transforms, data
+                )
+                data = self._transformed_data
+
+            self._row_count = len(data)  # Sync to frontend.
+
+            # Should only request a tick if the transforms have changed.
+            self.tick()
+
+        elif event_type == "unique-values-request":
+            column = content.get("column")
+            unique = (
+                self.__dataframe_reference[column].drop_duplicates().to_numpy()
+            )
+            answer = {
+                "event_type": "unique-values-reply",
+                "values": unique,
+            }
+            self.send(answer)

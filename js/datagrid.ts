@@ -172,6 +172,7 @@ export class DataGridModel extends DOMWidgetModel {
       column_widths: {},
       horizontal_stripes: false,
       vertical_stripes: false,
+      _transform_on_backend: false,
     };
   }
 
@@ -258,10 +259,16 @@ export class DataGridModel extends DOMWidgetModel {
   }
 
   updateTransforms() {
-    if (this.selectionModel) {
-      this.selectionModel.clear();
+    const transforms = this.get('_transforms');
+    if (this.get('_transform_on_backend')) {
+      const msg = { type: 'frontend-transforms', transforms: transforms };
+      this.send(msg);
+    } else {
+      if (this.selectionModel) {
+        this.selectionModel.clear();
+      }
+      this.data_model.replaceTransforms(transforms);
     }
-    this.data_model.replaceTransforms(this.get('_transforms'));
   }
 
   updateSelectionModel() {
@@ -893,11 +900,21 @@ export class StreamingDataGridModel extends DataGridModel {
       _row_count: 0,
       _data: {},
       _debounce_delay: 160,
+      _transform_on_backend: true,
     };
   }
 
   initialize(attributes: any, options: any) {
     super.initialize(attributes, options);
+    this.on('change:_row_count', () => {
+      const newRowCount = this.get('_row_count');
+      const oldRowCount = this.data_model.rowCount('body');
+      if (newRowCount != oldRowCount) {
+        const currentView = this.data_model.currentView;
+        currentView.setRowCount(newRowCount);
+        this.data_model.currentView = currentView;
+      }
+    });
 
     this.on('msg:custom', (content, buffers) => {
       if (content.event_type === 'data-reply') {
@@ -909,7 +926,6 @@ export class StreamingDataGridModel extends DataGridModel {
           }
         }
 
-        console.log('set data')
         const deserialized = deserialize_data(content.value, null);
         this.data_model.setModelRangeData(
           content.r1,
@@ -927,6 +943,7 @@ export class StreamingDataGridModel extends DataGridModel {
 
     if (this.data_model) {
       this.data_model.updateDataset({
+        dataModel: this,
         datasource: data,
         rowCount: this.get('_row_count'),
       });
@@ -935,6 +952,7 @@ export class StreamingDataGridModel extends DataGridModel {
     }
 
     this.data_model = new StreamingViewBasedJSONModel({
+      dataModel: this,
       datasource: this.data,
       rowCount: this.get('_row_count'),
     });

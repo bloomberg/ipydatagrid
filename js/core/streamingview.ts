@@ -91,6 +91,9 @@ export class StreamingView extends View {
     c2: number,
     value: DataSource,
   ) {
+    // Columns need to be set some time, not sure if this is the best place.
+    this._data.setColumns(value.columns);
+
     let field: DataSource.IField;
 
     // Update body
@@ -135,8 +138,12 @@ export class StreamingView extends View {
     this._streamed_data[field.name][row] = value;
   }
 
+  setRowCount(rowCount: number) {
+    this._rowCount = rowCount;
+  }
+
   private _streamed_data: Dict<any[]> = {};
-  private readonly _rowCount: number;
+  private _rowCount: number;
 }
 
 export namespace StreamingView {

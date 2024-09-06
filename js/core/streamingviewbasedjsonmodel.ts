@@ -1,6 +1,16 @@
+import { PromiseDelegate } from '@lumino/coreutils';
+import { DataModel } from '@lumino/datagrid';
 import { StreamingView } from './streamingview';
+import { TransformStateManager } from './transformStateManager';
 import { ViewBasedJSONModel } from './viewbasedjsonmodel';
+import { DataGridModel } from '../datagrid';
 import { DataSource } from '../datasource';
+
+interface IUnique {
+  region: DataModel.CellRegion;
+  column: string;
+  values: any[];
+}
 
 /**
  * A view based data model implementation for in-memory JSON data.
@@ -38,7 +48,42 @@ export class StreamingViewBasedJSONModel extends ViewBasedJSONModel {
     });
   }
 
+  /**
+   * Returns a Promise that resolves to an array of unique values contained in
+   * the provided column index.
+   *
+   * @param region - The CellRegion to retrieve unique values for.
+   * @param column - The column to retrieve unique values for.
+   */
+  uniqueValues(region: DataModel.CellRegion, column: string): Promise<any[]> {
+    if (
+      this._unique &&
+      region == this._unique.region &&
+      column == this._unique.column
+    ) {
+      return Promise.resolve(this._unique.values);
+    }
+
+    const promiseDelegate = new PromiseDelegate<any[]>();
+    this._dataModel.on('msg:custom', (content) => {
+      // when message received, want to drop this handler...
+      // Or keep it going but need a way of identifying where to put the received data??????
+      if (content.event_type === 'unique-values-reply') {
+        this._unique = { region, column, values: content.values };
+        promiseDelegate.resolve(this._unique.values);
+      }
+
+      // Do I need to cancel this callback?????????
+    });
+
+    const msg = { type: 'unique-values-request', column: column };
+    this._dataModel.send(msg);
+
+    return promiseDelegate.promise;
+  }
+
   updateDataset(options: StreamingViewBasedJSONModel.IOptions): void {
+    this._dataModel = options.dataModel;
     this._dataset = options.datasource;
     this._updatePrimaryKeyMap();
     const view = new StreamingView({
@@ -63,7 +108,23 @@ export class StreamingViewBasedJSONModel extends ViewBasedJSONModel {
     super.currentView = view;
   }
 
+  /**
+   * Handler for transformState.changed events.
+   *
+   * @param sender - TransformStateManager
+   *
+   * @param value - Event.
+   */
+  protected _transformStateChangedHandler(
+    sender: TransformStateManager,
+    value: TransformStateManager.IEvent,
+  ) {
+    this._transformSignal.emit(value);
+  }
+
   protected _currentView: StreamingView;
+  protected _dataModel: DataGridModel;
+  protected _unique?: IUnique;
 }
 
 export namespace StreamingViewBasedJSONModel {
@@ -75,5 +136,7 @@ export namespace StreamingViewBasedJSONModel {
      * The row number of the grid.
      */
     rowCount: number;
+
+    dataModel: DataGridModel;
   }
 }

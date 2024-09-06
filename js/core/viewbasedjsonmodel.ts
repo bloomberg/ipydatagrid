@@ -27,11 +27,10 @@ export class ViewBasedJSONModel extends MutableDataModel {
     this.updateDataset(options);
 
     this._transformState = new TransformStateManager();
-    // Repaint grid on transform state update
-    // Note: This will also result in the `model-reset` signal being sent.
     this._transformState.changed.connect((sender, value) => {
-      this.currentView = this._transformState.createView(this._dataset);
-      this._transformSignal.emit(value);
+      // Repaint grid on transform state update
+      // Note: This will also result in the `model-reset` signal being sent.
+      this._transformStateChangedHandler(sender, value);
     });
     // first run: generate a list of indices corresponding
     // to the locations of multi-index arrays.
@@ -463,8 +462,8 @@ export class ViewBasedJSONModel extends MutableDataModel {
    * @param region - The CellRegion to retrieve unique values for.
    * @param column - The column to retrieve unique values for.
    */
-  uniqueValues(region: DataModel.CellRegion, column: string): any[] {
-    return Array.from(new Set(this.dataset.data[column]));
+  uniqueValues(region: DataModel.CellRegion, column: string): Promise<any[]> {
+    return Promise.resolve(Array.from(new Set(this.dataset.data[column])));
   }
 
   /**
@@ -594,8 +593,23 @@ export class ViewBasedJSONModel extends MutableDataModel {
     return this.currentView.getSchemaIndex(region, index);
   }
 
+  /**
+   * Handler for transformState.changed events.
+   *
+   * @param sender - TransformStateManager
+   *
+   * @param value - Event.
+   */
+  protected _transformStateChangedHandler(
+    sender: TransformStateManager,
+    value: TransformStateManager.IEvent,
+  ) {
+    this.currentView = this._transformState.createView(this._dataset);
+    this._transformSignal.emit(value);
+  }
+
   protected _currentView: View;
-  private _transformSignal = new Signal<this, TransformStateManager.IEvent>(
+  protected _transformSignal = new Signal<this, TransformStateManager.IEvent>(
     this,
   );
   private _dataSyncSignal = new Signal<this, ViewBasedJSONModel.IDataSyncEvent>(
