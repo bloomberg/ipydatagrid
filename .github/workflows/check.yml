@@ -141,7 +141,7 @@ jobs:
           auto-activate-base: false
           channels: conda-forge
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: dist ${{ github.run_number }}
           path: ./dist
@@ -196,7 +196,7 @@ jobs:
           auto-activate-base: false
           channels: conda-forge
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: dist ${{ github.run_number }}
           path: ./dist
