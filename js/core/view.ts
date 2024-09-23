@@ -164,10 +164,10 @@ export class View {
     return Array.from(new Set(this.dataset.data[column]));
   }
 
-  private readonly _data: DataSource | Readonly<DataSource>;
-  private readonly _bodyFields: DataSource.IField[];
-  private readonly _headerFields: DataSource.IField[];
-  private readonly _missingValues: Private.MissingValuesMap | null;
+  protected readonly _data: DataSource | Readonly<DataSource>;
+  protected readonly _bodyFields: DataSource.IField[];
+  protected readonly _headerFields: DataSource.IField[];
+  protected readonly _missingValues: Private.MissingValuesMap | null;
 }
 
 /**

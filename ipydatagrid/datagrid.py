@@ -21,6 +21,7 @@ from traitlets import (
     List,
     Unicode,
     default,
+    observe,
     validate,
 )
 
@@ -934,6 +935,7 @@ class DataGrid(DOMWidget):
     @staticmethod
     def _get_cell_value_by_numerical_index(data, column_index, row_index):
         """Gets the value for a single cell by column index and row index."""
+        # TODO This is really not efficient, we should speed it up
         column = DataGrid._column_index_to_name(data, column_index)
         if column is None:
             return None
@@ -982,3 +984,197 @@ class DataGrid(DOMWidget):
                     if scale.max is None:
                         max = column_data.max()
                         scale.max = max if is_date else float(max)
+
+
+class StreamingDataGrid(DataGrid):
+    """A blazingly fast Grid Widget.
+    This widget needs a live kernel for working
+    (does not work when embedded in static HTML)
+    """
+
+    _model_name = Unicode("StreamingDataGridModel").tag(sync=True)
+    _view_name = Unicode("StreamingDataGridView").tag(sync=True)
+
+    _row_count = Int(0).tag(sync=True)
+    _debounce_delay = Int(160).tag(sync=True)
+
+    def __init__(self, *args, debounce_delay=160, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._debounce_delay = debounce_delay
+        self._transformed_data = None
+
+        self.on_msg(self._handle_comm_msg)
+
+    def transform(self, _):
+        # TODO Implement sorting and filtering backend-side?
+        raise RuntimeError(
+            "Setting filters and sorting rules to a "
+            "StreamingDataGrid is not supported."
+        )
+
+    @property
+    def data(self):
+        return super().data
+
+    @data.setter
+    def data(self, dataframe):
+        self.__dataframe_reference_index_names = dataframe.index.names
+        self.__dataframe_reference_columns = dataframe.columns
+        # Not making a copy in the streaming grid
+        self.__dataframe_reference = dataframe
+
+        # Primary key used
+        index_key = self.get_dataframe_index(dataframe)
+
+        self._data_object = self.generate_data_object(
+            dataframe, "ipydguuid", index_key
+        )
+
+        self._row_count = len(self._data_object["data"])
+
+        self._data = {
+            "data": {},
+            "schema": self._data_object["schema"],
+            "fields": self._data_object["fields"],
+        }
+
+    def tick(self):
+        """Notify that the underlying dataframe has changed."""
+        self.send({"event_type": "tick"})
+
+    def _apply_frontend_transforms(self, frontend_transforms, dataframe):
+        for transform in frontend_transforms:
+            if transform["type"] == "sort":
+                column = transform["column"]
+                desc = transform.get("desc", False)
+                dataframe = dataframe.sort_values(
+                    by=[column], ascending=not desc
+                )
+            elif transform["type"] == "filter":
+                column = transform["column"]
+                operator = transform["operator"]
+                value = transform["value"]
+                if operator == "<":
+                    dataframe = dataframe[dataframe[column] < value]
+                elif operator == ">":
+                    dataframe = dataframe[dataframe[column] > value]
+                elif operator == "=":
+                    dataframe = dataframe[dataframe[column] == value]
+                elif operator == "<=":
+                    dataframe = dataframe[dataframe[column] <= value]
+                elif operator == ">=":
+                    dataframe = dataframe[dataframe[column] >= value]
+                elif operator == "!=":
+                    dataframe = dataframe[dataframe[column] != value]
+                elif operator == "empty":
+                    dataframe = dataframe[dataframe[column].isna()]
+                elif operator == "notempty":
+                    dataframe = dataframe[dataframe[column].notna()]
+                elif operator == "in":
+                    dataframe = dataframe[dataframe[column].isin(value)]
+                elif operator == "between":
+                    dataframe = dataframe[
+                        dataframe[column].between(value[0], value[1])
+                    ]
+                elif operator == "startswith":
+                    dataframe = dataframe[
+                        dataframe[column].str.startswith(value)
+                    ]
+                elif operator == "endswith":
+                    dataframe = dataframe[dataframe[column].str.endswith(value)]
+                elif operator == "stringContains":
+                    dataframe = dataframe[dataframe[column].str.contains(value)]
+                elif operator == "contains":
+                    dataframe = dataframe[dataframe[column].str.contains(value)]
+                elif operator == "!contains":
+                    dataframe = dataframe[
+                        not dataframe[column].str.contains(value)
+                    ]
+                elif operator == "isOnSameDay":
+                    value = pd.to_datetime(value).date()
+                    dataframe = dataframe[
+                        pd.to_datetime(dataframe[column]).dt.date == value
+                    ]
+                else:
+                    raise RuntimeError(
+                        f"Unrecognised filter operator '{operator}'"
+                    )
+
+        return dataframe
+
+    def _handle_comm_msg(self, _, content, _buffs):
+        event_type = content.get("type", "")
+
+        if event_type == "data-request":
+            r1 = content.get("r1")
+            r2 = content.get("r2")
+            c1 = content.get("c1")
+            c2 = content.get("c2")
+
+            # Filter/sort whole dataset before selecting rows/cols of interest
+            if self._transformed_data is not None:
+                # Use existing transformed data.
+                value = self._transformed_data
+            else:
+                value = self.__dataframe_reference
+
+            value = value.iloc[r1 : r2 + 1, c1 : c2 + 1]
+
+            # Primary key used
+            index_key = self.get_dataframe_index(value)
+
+            serialized = _data_serialization_impl(
+                self.generate_data_object(value, "ipydguuid", index_key), None
+            )
+
+            # Extract all buffers
+            buffers = []
+            for column in serialized["data"].keys():
+                if (
+                    not isinstance(serialized["data"][column], list)
+                    and not serialized["data"][column]["type"] == "raw"
+                ):
+                    buffers.append(serialized["data"][column]["value"])
+                    serialized["data"][column]["value"] = len(buffers) - 1
+
+            answer = {
+                "event_type": "data-reply",
+                "value": serialized,
+                "r1": r1,
+                "r2": r2,
+                "c1": c1,
+                "c2": c2,
+            }
+
+            self.send(answer, buffers)
+
+        elif event_type == "unique-values-request":
+            column = content.get("column")
+            unique = (
+                self.__dataframe_reference[column].drop_duplicates().to_numpy()
+            )
+            answer = {
+                "event_type": "unique-values-reply",
+                "values": unique,
+            }
+            self.send(answer)
+
+    @observe("_transforms")
+    def _on_transforms_changed(self, change):
+        # Transforms is an array of dicts.
+        frontend_transforms = change["new"]
+
+        self._transformed_data = None
+        data = self.__dataframe_reference
+
+        if frontend_transforms:
+            self._transformed_data = self._apply_frontend_transforms(
+                frontend_transforms, data
+            )
+            data = self._transformed_data
+
+        self._row_count = len(data)  # Sync to frontend.
+
+        # Should only request a tick if the transforms have changed.
+        self.tick()
