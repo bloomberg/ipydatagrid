@@ -260,15 +260,12 @@ export class DataGridModel extends DOMWidgetModel {
 
   updateTransforms() {
     const transforms = this.get('_transforms');
-    if (this.get('_transform_on_backend')) {
-      const msg = { type: 'frontend-transforms', transforms: transforms };
-      this.send(msg);
-    } else {
+    if (!this.get('_transform_on_backend')) {
       if (this.selectionModel) {
         this.selectionModel.clear();
       }
-      this.data_model.replaceTransforms(transforms);
     }
+    this.data_model.replaceTransforms(transforms);
   }
 
   updateSelectionModel() {

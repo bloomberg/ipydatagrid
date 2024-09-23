@@ -21,6 +21,7 @@ from traitlets import (
     List,
     Unicode,
     default,
+    observe,
     validate,
 )
 
@@ -1148,24 +1149,6 @@ class StreamingDataGrid(DataGrid):
 
             self.send(answer, buffers)
 
-        elif event_type == "frontend-transforms":
-            # Transforms is an array of dicts.
-            frontend_transforms = content.get("transforms")
-
-            self._transformed_data = None
-            data = self.__dataframe_reference
-
-            if frontend_transforms:
-                self._transformed_data = self._apply_frontend_transforms(
-                    frontend_transforms, data
-                )
-                data = self._transformed_data
-
-            self._row_count = len(data)  # Sync to frontend.
-
-            # Should only request a tick if the transforms have changed.
-            self.tick()
-
         elif event_type == "unique-values-request":
             column = content.get("column")
             unique = (
@@ -1176,3 +1159,22 @@ class StreamingDataGrid(DataGrid):
                 "values": unique,
             }
             self.send(answer)
+
+    @observe("_transforms")
+    def _on_transforms_changed(self, change):
+        # Transforms is an array of dicts.
+        frontend_transforms = change["new"]
+
+        self._transformed_data = None
+        data = self.__dataframe_reference
+
+        if frontend_transforms:
+            self._transformed_data = self._apply_frontend_transforms(
+                frontend_transforms, data
+            )
+            data = self._transformed_data
+
+        self._row_count = len(data)  # Sync to frontend.
+
+        # Should only request a tick if the transforms have changed.
+        self.tick()
