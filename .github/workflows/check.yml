@@ -140,7 +140,7 @@ jobs:
           create-args: >-
             python=3.9
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: dist ${{ github.run_number }}
           path: ./dist
@@ -195,7 +195,7 @@ jobs:
           create-args: >-
             python=3.9
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: dist ${{ github.run_number }}
           path: ./dist
